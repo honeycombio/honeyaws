@@ -1,0 +1,35 @@
+os:
+  - linux
+
+language: go
+
+addons:
+    artifacts:
+        debug: true
+        paths:
+        - $GOPATH/bin
+
+dist: trusty
+
+go:
+    - 1.8
+
+script:
+    - set -e
+# Run tests
+    - go test github.com/honeycombio/honeyelb/...
+# Build binary and packages
+    - go install -ldflags "-X main.BuildID=1.${TRAVIS_BUILD_NUMBER}" github.com/honeycombio/honeyelb/...
+    - ./build-pkg.sh -v "1.${TRAVIS_BUILD_NUMBER}" -t deb
+    - ./build-pkg.sh -v "1.${TRAVIS_BUILD_NUMBER}" -t rpm
+# Check that packages install
+    - pkg-test/test.sh "1.${TRAVIS_BUILD_NUMBER}"
+
+before_install:
+    # Install fpm for deb/rpm package building
+    - sudo apt-get -qq update
+    - sudo apt-get install -y build-essential rpm
+    - gem install fpm
+
+install:
+        - true # HACK: fixes travis-CI lack of support for vendor/ + godeps
