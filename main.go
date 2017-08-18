@@ -14,13 +14,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elb"
-	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/honeycombio/honeyelb/options"
 	"github.com/honeycombio/honeyelb/publisher"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 const (
@@ -244,15 +244,16 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 
 	// used to get account ID (needed to know the
 	// bucket's object prefix)
-	iamSvc := iam.New(sess, nil)
+	stsClient := sts.New(sess)
+	req, userResp := stsClient.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
+	err = req.Send()
 
-	userResp, err := iamSvc.GetUser(&iam.GetUserInput{})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error trying to get account ID: ", err)
 		os.Exit(1)
 	}
 
-	accountID := userIDFromARN(*userResp.User.Arn)
+	accountID := userIDFromARN(*userResp.Arn)
 	region := *sess.Config.Region
 
 	// get new logs every 5 minutes
