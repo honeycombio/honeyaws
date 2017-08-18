@@ -285,6 +285,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
 			os.Exit(1)
 		}
+		logrus.Info("Pausing until the next set of logs are available")
 		time.Sleep(5 * time.Minute)
 	}
 
@@ -353,7 +354,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 		}
 	}
 
-	return fmt.Errorf("Subcommand %q not recognized", args[1])
+	return fmt.Errorf("Subcommand %q not recognized", args[0])
 }
 
 func main() {
