@@ -122,32 +122,34 @@ func (rs *requestShaper) Shape(field string, ev *event.Event) {
 	}
 }
 
+func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh chan<- event.Event) {
+	for ev := range eventsCh {
+		// use backend_status_code and elb_status_code to set sample rate
+		var key string
+		if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
+			if bsc, ok := backendStatusCode.(int); ok {
+				key = fmt.Sprintf("%d", bsc)
+			} else {
+				key = "0"
+			}
+		}
+		if elbStatusCode, ok := ev.Data["elb_status_code"]; ok {
+			if esc, ok := elbStatusCode.(int); ok {
+				key = fmt.Sprintf("%s_%d", key, esc)
+			}
+		}
+		rate := h.sampler.GetSampleRate(key)
+		if rand.Intn(rate) == 0 {
+			ev.SampleRate = rate
+			sampledCh <- ev
+		}
+
+	}
+}
+
 func (h *HoneycombPublisher) sample(eventsCh <-chan event.Event) chan event.Event {
 	sampledCh := make(chan event.Event, runtime.NumCPU())
-	go func() {
-		for ev := range eventsCh {
-			// use backend_status_code and elb_status_code to set sample rate
-			var key string
-			if backend_status_code, ok := ev.Data["backend_status_code"]; ok {
-				if bsc, ok := backend_status_code.(int); ok {
-					key = fmt.Sprintf("%d", bsc)
-				} else {
-					key = "0"
-				}
-			}
-			if elb_status_code, ok := ev.Data["elb_status_code"]; ok {
-				if esc, ok := elb_status_code.(int); ok {
-					key = fmt.Sprintf("%s_%d", key, esc)
-				}
-			}
-			rate := h.sampler.GetSampleRate(key)
-			if rand.Intn(rate) == 0 {
-				ev.SampleRate = rate
-				sampledCh <- ev
-			}
-
-		}
-	}()
+	go h.dynSample(eventsCh, sampledCh)
 	return sampledCh
 }
 

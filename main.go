@@ -259,38 +259,36 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 	ticker := time.NewTicker(5 * time.Minute).C
 	// Start the loop to continually ingest access logs.
 	for {
-		select {
-		case <-ticker:
-			// Converted into a string which also is used
-			// for the object prefix
-			nowPath := time.Now().UTC().Format("/2006/01/02")
+		// Converted into a string which also is used
+		// for the object prefix
+		nowPath := time.Now().UTC().Format("/2006/01/02")
 
-			s3svc := s3.New(sess, nil)
+		s3svc := s3.New(sess, nil)
 
-			// For now, get objects for just today.
-			totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/elasticloadbalancing/" + region + nowPath
+		// For now, get objects for just today.
+		totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/elasticloadbalancing/" + region + nowPath
 
-			logrus.WithFields(logrus.Fields{
-				"prefix": totalPrefix,
-				"lbName": lbName,
-			}).Info("Getting recent objects")
+		logrus.WithFields(logrus.Fields{
+			"prefix": totalPrefix,
+			"lbName": lbName,
+		}).Info("Getting recent objects")
 
-			// Wrapper function used to satisfy the method signature of
-			// ListObjectsPages and still pass additional parameters like
-			// sess.
-			cb := func(bucketResp *s3.ListObjectsOutput, lastPage bool) bool {
-				return accessLogBucketPageCallback(sess, lbName, bucketName, bucketResp, lastPage)
-			}
-
-			if err := s3svc.ListObjectsPages(&s3.ListObjectsInput{
-				Bucket: aws.String(bucketName),
-				Prefix: aws.String(totalPrefix),
-			}, cb); err != nil {
-				fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
-				os.Exit(1)
-			}
-			logrus.Info("Pausing until the next set of logs are available")
+		// Wrapper function used to satisfy the method signature of
+		// ListObjectsPages and still pass additional parameters like
+		// sess.
+		cb := func(bucketResp *s3.ListObjectsOutput, lastPage bool) bool {
+			return accessLogBucketPageCallback(sess, lbName, bucketName, bucketResp, lastPage)
 		}
+
+		if err := s3svc.ListObjectsPages(&s3.ListObjectsInput{
+			Bucket: aws.String(bucketName),
+			Prefix: aws.String(totalPrefix),
+		}, cb); err != nil {
+			fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
+			os.Exit(1)
+		}
+		logrus.Info("Pausing until the next set of logs are available")
+		<-ticker
 	}
 
 }
