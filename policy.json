@@ -23,7 +23,7 @@
         {
             "Effect": "Allow",
             "Action": [
-                "iam:GetUser"
+                "sts:GetCallerIdentity"
             ],
             "Resource": "*"
         }
