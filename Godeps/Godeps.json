@@ -171,6 +171,10 @@
 			"Rev": "c787282c39ac1fc618827141a1f762240def08a3"
 		},
 		{
+			"ImportPath": "github.com/honeycombio/dynsampler-go",
+			"Rev": "e2e8a486b1ed111e01453d39afaa20db0685744b"
+		},
+		{
 			"ImportPath": "github.com/honeycombio/gonx",
 			"Comment": "v1.3.0-6-gdc1c4fe",
 			"Rev": "dc1c4fe6e0cc63c38a537b78f9ddaa60e168b957"

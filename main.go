@@ -255,6 +255,8 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 	accountID := userIDFromARN(*userResp.User.Arn)
 	region := *sess.Config.Region
 
+	// get new logs every 5 minutes
+	ticker := time.NewTicker(5 * time.Minute).C
 	// Start the loop to continually ingest access logs.
 	for {
 		// Converted into a string which also is used
@@ -285,7 +287,8 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
 			os.Exit(1)
 		}
-		time.Sleep(5 * time.Minute)
+		logrus.Info("Pausing until the next set of logs are available")
+		<-ticker
 	}
 
 }
@@ -353,7 +356,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 		}
 	}
 
-	return fmt.Errorf("Subcommand %q not recognized", args[1])
+	return fmt.Errorf("Subcommand %q not recognized", args[0])
 }
 
 func main() {

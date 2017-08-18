@@ -2,12 +2,15 @@ package publisher
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"math/rand"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/honeycombio/dynsampler-go"
 	"github.com/honeycombio/honeyelb/options"
 	"github.com/honeycombio/honeytail/event"
 	"github.com/honeycombio/honeytail/parsers/nginx"
@@ -35,6 +38,7 @@ type HoneycombPublisher struct {
 	nginxParser  *nginx.Parser
 	lines        chan string
 	eventsToSend chan event.Event
+	sampler      dynsampler.Sampler
 }
 
 func NewHoneycombPublisher(opt *options.Options, configFile string) *HoneycombPublisher {
@@ -63,6 +67,19 @@ func NewHoneycombPublisher(opt *options.Options, configFile string) *HoneycombPu
 		})
 		libhoneyInitialized = true
 	}
+
+	// we spin up one Publisher per log file, which means no memory between log
+	// files. Setting ClearFreqSec to 1s so that the processed log is
+	// effectively used to control sample rate.  If we change this to spin up
+	// one publisher for the process and feed it multiple log files, clear
+	// frequency sec should be set to 5 or 10 minutes, the log file rotation
+	// period (or 2x that period).
+	hp.sampler = &dynsampler.AvgSampleRate{
+		ClearFrequencySec: 1,
+		GoalSampleRate:    opt.SampleRate,
+	}
+	// TODO should check err returned from Start()
+	hp.sampler.Start()
 	return hp
 }
 
@@ -105,6 +122,37 @@ func (rs *requestShaper) Shape(field string, ev *event.Event) {
 	}
 }
 
+func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh chan<- event.Event) {
+	for ev := range eventsCh {
+		// use backend_status_code and elb_status_code to set sample rate
+		var key string
+		if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
+			if bsc, ok := backendStatusCode.(int); ok {
+				key = fmt.Sprintf("%d", bsc)
+			} else {
+				key = "0"
+			}
+		}
+		if elbStatusCode, ok := ev.Data["elb_status_code"]; ok {
+			if esc, ok := elbStatusCode.(int); ok {
+				key = fmt.Sprintf("%s_%d", key, esc)
+			}
+		}
+		rate := h.sampler.GetSampleRate(key)
+		if rand.Intn(rate) == 0 {
+			ev.SampleRate = rate
+			sampledCh <- ev
+		}
+
+	}
+}
+
+func (h *HoneycombPublisher) sample(eventsCh <-chan event.Event) chan event.Event {
+	sampledCh := make(chan event.Event, runtime.NumCPU())
+	go h.dynSample(eventsCh, sampledCh)
+	return sampledCh
+}
+
 func sendEvents(eventsCh <-chan event.Event) {
 	shaper := requestShaper{&urlshaper.Parser{}}
 	for ev := range eventsCh {
@@ -128,11 +176,12 @@ func sendEvents(eventsCh <-chan event.Event) {
 }
 
 func (hp *HoneycombPublisher) Publish(r io.Reader) error {
-	linesCh := make(chan string)
-	eventsCh := make(chan event.Event)
+	linesCh := make(chan string, runtime.NumCPU())
+	eventsCh := make(chan event.Event, runtime.NumCPU())
 	scanner := bufio.NewScanner(r)
 	go hp.nginxParser.ProcessLines(linesCh, eventsCh, nil)
-	go sendEvents(eventsCh)
+	sampledCh := hp.sample(eventsCh)
+	go sendEvents(sampledCh)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
