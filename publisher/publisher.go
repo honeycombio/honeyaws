@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"runtime"
 	"strings"
@@ -18,9 +19,34 @@ import (
 	"github.com/honeycombio/urlshaper"
 )
 
-var (
-	libhoneyInitialized = false
+const (
+	AWSElasticLoadBalancerFormat = "aws_elb"
 )
+
+var (
+	// 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 0.000016 200 200 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2
+	logFormat           = []byte(fmt.Sprintf(`log_format %s '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';`, AWSElasticLoadBalancerFormat))
+	libhoneyInitialized = false
+	formatFileName      string
+)
+
+func init() {
+	// Set up the log format file for parsing in the future.
+	formatFile, err := ioutil.TempFile("", "honeytail_fmt_file")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	if _, err := formatFile.Write(logFormat); err != nil {
+		logrus.Fatal(err)
+	}
+
+	if err := formatFile.Close(); err != nil {
+		logrus.Fatal(err)
+	}
+
+	formatFileName = formatFile.Name()
+}
 
 type Publisher interface {
 	// Publish accepts an io.Reader and scans it line-by-line, parses the
@@ -34,28 +60,23 @@ type Publisher interface {
 // and URL sub-parsing logic.
 type HoneycombPublisher struct {
 	APIHost      string
-	ScrubQuery   bool
 	SampleRate   int
-	initialized  bool
 	nginxParser  *nginx.Parser
 	lines        chan string
 	eventsToSend chan event.Event
 	sampler      dynsampler.Sampler
 }
 
-func NewHoneycombPublisher(opt *options.Options, configFile string) *HoneycombPublisher {
+func NewHoneycombPublisher(opt *options.Options, logFormatName string) *HoneycombPublisher {
 	hp := &HoneycombPublisher{
 		nginxParser: &nginx.Parser{},
 	}
 
-	// htflags is needed because we can't count on vendored honeyelb flags
-	// lib to be the same as vendored ht flags lib to do the type
-	// conversion :|
 	hp.nginxParser.Init(&nginx.Options{
-		ConfigFile:      configFile,
+		ConfigFile:      formatFileName,
 		TimeFieldName:   "timestamp",
 		TimeFieldFormat: "2006-01-02T15:04:05.9999Z",
-		LogFormatName:   "aws_elb",
+		LogFormatName:   logFormatName,
 		NumParsers:      runtime.NumCPU(),
 	})
 
