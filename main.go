@@ -16,11 +16,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/honeycombio/honeyelb/options"
 	"github.com/honeycombio/honeyelb/publisher"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
-	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 const (
@@ -35,11 +35,12 @@ const (
 
 var (
 	// 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 0.000016 200 200 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2
-	accessLogConfig = []byte(`log_format aws_elb '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';`)
-	stateFileFormat = "honeyelb-state-%s.json"
-	opt             = &options.Options{}
-	formatFileName  string
-	BuildID         string
+	accessLogConfig  = []byte(`log_format aws_elb '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';`)
+	stateFileFormat  = "honeyelb-state-%s.json"
+	defaultPublisher = &publisher.HoneycombPublisher{}
+	opt              = &options.Options{}
+	formatFileName   string
+	BuildID          string
 )
 
 func init() {
@@ -78,12 +79,8 @@ func parseELBAccessEvents(elbLog string) error {
 		return err
 	}
 
-	// TODO(nathanleclaire): We could probably just use a singleton
-	// Publisher instance and have a publisher.Publish() method.
-	hp := publisher.NewHoneycombPublisher(opt, formatFileName)
-
 	// Publish will perform the scanning and send the events to Honeycomb.
-	return hp.Publish(logFile)
+	return defaultPublisher.Publish(logFile)
 }
 
 func processObject(sess *session.Session, lbName, bucketName string, obj *s3.Object) error {
@@ -366,6 +363,8 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	defaultPublisher = publisher.NewHoneycombPublisher(opt, formatFileName)
 
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [ELB names...]
