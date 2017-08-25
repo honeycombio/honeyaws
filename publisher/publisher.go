@@ -29,7 +29,9 @@ type Publisher interface {
 }
 
 // HoneycombPublisher implements Publisher and sends the entries provided to
-// Honeycomb
+// Honeycomb. Publisher allows us to have only one point of entry to sending
+// events to Honeycomb (if desired), as well as isolate line parsing, sampling,
+// and URL sub-parsing logic.
 type HoneycombPublisher struct {
 	APIHost      string
 	ScrubQuery   bool
@@ -139,6 +141,10 @@ func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh ch
 			}
 		}
 		rate := h.sampler.GetSampleRate(key)
+		if rate <= 0 {
+			logrus.WithField("rate", rate).Error("Sample should not be less than zero")
+			rate = 1
+		}
 		if rand.Intn(rate) == 0 {
 			ev.SampleRate = rate
 			sampledCh <- ev
