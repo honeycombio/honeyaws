@@ -70,18 +70,14 @@ func NewHoneycombPublisher(opt *options.Options, configFile string) *HoneycombPu
 		libhoneyInitialized = true
 	}
 
-	// we spin up one Publisher per log file, which means no memory between log
-	// files. Setting ClearFreqSec to 1s so that the processed log is
-	// effectively used to control sample rate.  If we change this to spin up
-	// one publisher for the process and feed it multiple log files, clear
-	// frequency sec should be set to 5 or 10 minutes, the log file rotation
-	// period (or 2x that period).
 	hp.sampler = &dynsampler.AvgSampleRate{
-		ClearFrequencySec: 1,
+		ClearFrequencySec: 300,
 		GoalSampleRate:    opt.SampleRate,
 	}
-	// TODO should check err returned from Start()
-	hp.sampler.Start()
+
+	if err := hp.sampler.Start(); err != nil {
+		logrus.Error(err)
+	}
 	return hp
 }
 
