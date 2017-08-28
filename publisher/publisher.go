@@ -136,6 +136,14 @@ func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh ch
 				key = fmt.Sprintf("%s_%d", key, esc)
 			}
 		}
+
+		// Make sure sample rate is per-ELB
+		if elbName, ok := ev.Data["elb"]; ok {
+			if name, ok := elbName.(string); ok {
+				key = fmt.Sprintf("%s_%s", key, name)
+			}
+		}
+
 		rate := h.sampler.GetSampleRate(key)
 		if rate <= 0 {
 			logrus.WithField("rate", rate).Error("Sample should not be less than zero")
@@ -145,7 +153,6 @@ func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh ch
 			ev.SampleRate = rate
 			sampledCh <- ev
 		}
-
 	}
 }
 
