@@ -265,7 +265,8 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 		s3svc := s3.New(sess, nil)
 
 		// For now, get objects for just today.
-		totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/elasticloadbalancing/" + region + nowPath
+		totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/elasticloadbalancing/" + region + nowPath +
+		    "/" + accountID + "_elasticloadbalancing_" + region + "_" + lbName
 
 		logrus.WithFields(logrus.Fields{
 			"prefix": totalPrefix,
