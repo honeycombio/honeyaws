@@ -66,6 +66,7 @@ func NewHoneycombPublisher(opt *options.Options, configFile string) *HoneycombPu
 			WriteKey:      opt.WriteKey,
 			Dataset:       opt.Dataset,
 			SampleRate:    uint(opt.SampleRate),
+			APIHost:       opt.APIHost,
 		})
 		libhoneyInitialized = true
 	}
