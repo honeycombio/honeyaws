@@ -41,9 +41,17 @@ var (
 	opt              = &options.Options{}
 	formatFileName   string
 	BuildID          string
+	versionStr       string
 )
 
 func init() {
+	// set the version string to our desired format
+	if BuildID == "" {
+		versionStr = "dev"
+	} else {
+		versionStr = "1." + BuildID
+	}
+
 	// Bootstrap this config file when the program starts up for usage by
 	// the nginx parser.
 	formatFile, err := ioutil.TempFile("", "honeytail_elb_access_log_format")
@@ -62,7 +70,7 @@ func init() {
 	formatFileName = formatFile.Name()
 
 	// init libhoney user agent properly
-	libhoney.UserAgentAddition = "honeyelb/" + BuildID
+	libhoney.UserAgentAddition = "honeyelb/" + versionStr
 }
 
 //TODO: Would it be better to parse from a sample object path directly?
@@ -265,7 +273,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 
 		// For now, get objects for just today.
 		totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/elasticloadbalancing/" + region + nowPath +
-		    "/" + accountID + "_elasticloadbalancing_" + region + "_" + lbName
+			"/" + accountID + "_elasticloadbalancing_" + region + "_" + lbName
 
 		logrus.WithFields(logrus.Fields{
 			"prefix": totalPrefix,
@@ -363,6 +371,11 @@ func main() {
 	args, err := flagParser.Parse()
 	if err != nil {
 		os.Exit(1)
+	}
+
+	if opt.Version {
+		fmt.Println("honeyelb version", versionStr)
+		os.Exit(0)
 	}
 
 	defaultPublisher = publisher.NewHoneycombPublisher(opt, formatFileName)
