@@ -45,6 +45,13 @@ var (
 )
 
 func init() {
+	// set the version string to our desired format
+	if BuildID == "" {
+		versionStr = "dev"
+	} else {
+		versionStr = "1." + BuildID
+	}
+
 	// Bootstrap this config file when the program starts up for usage by
 	// the nginx parser.
 	formatFile, err := ioutil.TempFile("", "honeytail_elb_access_log_format")
@@ -364,12 +371,6 @@ func main() {
 	args, err := flagParser.Parse()
 	if err != nil {
 		os.Exit(1)
-	}
-
-	if BuildID == "" {
-		versionStr = "dev"
-	} else {
-		versionStr = "1." + BuildID
 	}
 
 	if opt.Version {
