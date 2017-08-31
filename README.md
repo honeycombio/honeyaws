@@ -44,6 +44,31 @@ $ honeyelb --writekey=<writekey> ingest foo-lb
 
 To ingest all LBs, use `honeyelb ingest` without any non-flag arguments.
 
+### Configuration
+
+`honeyelb` takes a `--config=filename` option for a `.ini` file, for example:
+
+    APIHost=https://api.honeycomb.io/
+    Dataset=aws-elb-access
+    SampleRate=1
+    StateDir=.
+    WriteKey=AARGH_SPIDERS
+    Debug=true
+
+`honeyelb` also takes configuration by environment variable, which you can
+specify either via the environment or in a `.env` file in the current working
+directory:
+
+    HONEYELB_API_HOST=https://api.honeycomb.io/
+    HONEYELB_DATASET=aws-elb-access
+    HONEYELB_SAMPLE_RATE=1
+    HONEYELB_STATE_DIR=.
+    HONEYELB_WRITE_KEY=AARGH_SPIDERS
+
+The configuration file takes precedence over environment variables.
+
+The process environment takes precedence over the `.env` file.
+
 ## Contributions
 
 Features, bug fixes and other changes to honeyelb are gladly accepted. Please

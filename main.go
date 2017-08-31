@@ -21,6 +21,7 @@ import (
 	"github.com/honeycombio/honeyelb/publisher"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -367,7 +368,14 @@ Your write key is available at https://ui.honeycomb.io/account`)
 }
 
 func main() {
+	godotenv.Load() // fire and forget
+
 	flagParser := flag.NewParser(opt, flag.Default)
+	opt.Config = func(s string) error {
+		ini := flag.NewIniParser(flagParser)
+		return ini.ParseFile(s)
+	}
+
 	args, err := flagParser.Parse()
 	if err != nil {
 		os.Exit(1)
@@ -377,6 +385,19 @@ func main() {
 		fmt.Println("honeyelb version", versionStr)
 		os.Exit(0)
 	}
+
+	if opt.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"Debug":      opt.Debug,
+		"APIHost":    opt.APIHost,
+		"Dataset":    opt.Dataset,
+		"SampleRate": opt.SampleRate,
+		"StateDir":   opt.StateDir,
+		"WriteKey":   len(opt.WriteKey) > 0,
+	}).Debug("Configuration")
 
 	defaultPublisher = publisher.NewHoneycombPublisher(opt, formatFileName)
 
