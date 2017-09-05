@@ -1,0 +1,13 @@
+[Unit]
+Description=Honeycomb CloudFront Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/honeycloudfront --statedir /var/lib/honeycloudfront ingest
+KillMode=process
+Restart=on-failure
+User=honeycomb
+Group=honeycomb
+
+[Install]
+Alias=honeycloudfront honeycloudfront.service

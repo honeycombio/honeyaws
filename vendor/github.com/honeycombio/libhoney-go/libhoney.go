@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -27,7 +30,7 @@ func init() {
 const (
 	defaultSampleRate = 1
 	defaultAPIHost    = "https://api.honeycomb.io/"
-	version           = "1.3.3"
+	version           = "1.4.0"
 
 	// DefaultMaxBatchSize how many events to collect in a batch
 	DefaultMaxBatchSize = 50
@@ -45,7 +48,7 @@ var (
 
 // globals to support default/singleton-like behavior
 var (
-	tx     txClient
+	tx     Output
 	txOnce sync.Once
 
 	blockOnResponses = false
@@ -106,6 +109,13 @@ type Config struct {
 	// channel it will be ok.
 	BlockOnResponse bool
 
+	// Output allows you to override what happens to events after you call
+	// Send() on them. By default, events are asynchronously sent to the
+	// Honeycomb API. You can use the MockOutput included in this package in
+	// unit tests, or use the WriterOutput to write events to STDOUT or to a
+	// file when developing locally.
+	Output Output
+
 	// Configuration for the underlying sender. It is safe (and recommended) to
 	// leave these values at their defaults. You cannot change these values
 	// after calling Init()
@@ -118,6 +128,45 @@ type Config struct {
 	// Honeycomb servers. Intended for use in tests in order to assert on
 	// expected behavior.
 	Transport http.RoundTripper
+}
+
+// VerifyWriteKey calls out to the Honeycomb API to validate the write key, so
+// we can exit immediately if desired instead of happily sending events that
+// are all rejected.
+func VerifyWriteKey(config Config) error {
+	if config.WriteKey == "" {
+		return errors.New("Write key is empty")
+	}
+	if config.APIHost == "" {
+		config.APIHost = defaultAPIHost
+	}
+	u, err := url.Parse(config.APIHost)
+	if err != nil {
+		return fmt.Errorf("Error parsing API URL: %s", err)
+	}
+	u.Path = path.Join(u.Path, "1", "team_slug")
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", UserAgentAddition)
+	req.Header.Add("X-Honeycomb-Team", config.WriteKey)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return errors.New("Write key provided is invalid")
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf(`Abnormal non-200 response verifying Honeycomb write key: %d
+Response body: %s`, resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 // Event is used to hold data that can be sent to Honeycomb. It can also
@@ -284,17 +333,20 @@ func Init(config Config) error {
 
 	blockOnResponses = config.BlockOnResponse
 
-	// reset the global transmission
-	tx = &txDefaultClient{
-		maxBatchSize:         config.MaxBatchSize,
-		batchTimeout:         config.SendFrequency,
-		maxConcurrentBatches: config.MaxConcurrentBatches,
-		pendingWorkCapacity:  config.PendingWorkCapacity,
-		blockOnSend:          config.BlockOnSend,
-		blockOnResponses:     config.BlockOnResponse,
-		transport:            config.Transport,
+	if config.Output == nil {
+		// reset the global transmission
+		tx = &txDefaultClient{
+			maxBatchSize:         config.MaxBatchSize,
+			batchTimeout:         config.SendFrequency,
+			maxConcurrentBatches: config.MaxConcurrentBatches,
+			pendingWorkCapacity:  config.PendingWorkCapacity,
+			blockOnSend:          config.BlockOnSend,
+			blockOnResponses:     config.BlockOnResponse,
+			transport:            config.Transport,
+		}
+	} else {
+		tx = config.Output
 	}
-
 	if err := tx.Start(); err != nil {
 		return err
 	}
@@ -471,6 +523,13 @@ func (f *fieldHolder) AddFunc(fn func() (string, interface{}, error)) error {
 	return nil
 }
 
+// Fields returns a reference to the map of fields that have been added to an
+// event. Caution: it is not safe to manipulate the returned map concurrently
+// with calls to AddField, Add or AddFunc.
+func (f *fieldHolder) Fields() map[string]interface{} {
+	return f.data
+}
+
 // Send dispatches the event to be sent to Honeycomb, sampling if necessary.
 //
 // If you have sampling enabled
@@ -554,11 +613,6 @@ func sendDroppedResponse(e *Event, message string) {
 // returns true if the sample should be dropped
 func shouldDrop(rate uint) bool {
 	return rand.Intn(int(rate)) != 0
-}
-
-// returns true if the first character of the string is lowercase
-func isFirstLower(s string) bool {
-	return false
 }
 
 // NewBuilder creates a new event builder. The builder inherits any

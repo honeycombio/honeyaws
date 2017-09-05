@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build deb or rpm packages for honeyelb.
+# Build deb or rpm packages for honeycomb-aws.
 set -e
 
 function usage() {
@@ -23,12 +23,15 @@ if [ -z "$version" ] || [ -z "$pkg_type" ]; then
     usage
 fi
 
-fpm -s dir -n honeyelb \
+fpm -s dir -n honeycomb-aws \
     -m "Honeycomb <team@honeycomb.io>" \
     -p $GOPATH/bin \
     -v $version \
     -t $pkg_type \
     --pre-install=./preinstall \
     $GOPATH/bin/honeyelb=/usr/bin/honeyelb \
-    ./honeyelb.upstart=/etc/init/honeyelb.conf \
-    ./honeyelb.service=/lib/systemd/system/honeyelb.service
+    $GOPATH/bin/honeycloudfront=/usr/bin/honeycloudfront \
+    ./service/honeycloudfront.upstart=/etc/init/honeycloudfront.conf \
+    ./service/honeycloudfront.service=/lib/systemd/system/honeycloudfront.service \
+    ./service/honeyelb.upstart=/etc/init/honeyelb.conf \
+    ./service/honeyelb.service=/lib/systemd/system/honeyelb.service

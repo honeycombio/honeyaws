@@ -1,7 +1,10 @@
 {
 	"ImportPath": "github.com/honeycombio/honeyelb",
-	"GoVersion": "go1.8",
+	"GoVersion": "go1.9",
 	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
@@ -124,6 +127,11 @@
 			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/cloudfront",
+			"Comment": "v1.10.15-3-ga42816b7",
+			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/elb",
 			"Comment": "v1.10.15-3-ga42816b7",
 			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
@@ -176,24 +184,24 @@
 		},
 		{
 			"ImportPath": "github.com/honeycombio/honeytail/event",
-			"Rev": "5f8623756309a4bfcdbf3272beac9828fc3743a8"
+			"Rev": "f672d08ef086c809b617601c62dd6da5585f2722"
 		},
 		{
 			"ImportPath": "github.com/honeycombio/honeytail/httime",
-			"Rev": "5f8623756309a4bfcdbf3272beac9828fc3743a8"
+			"Rev": "f672d08ef086c809b617601c62dd6da5585f2722"
 		},
 		{
 			"ImportPath": "github.com/honeycombio/honeytail/parsers",
-			"Rev": "5f8623756309a4bfcdbf3272beac9828fc3743a8"
+			"Rev": "f672d08ef086c809b617601c62dd6da5585f2722"
 		},
 		{
 			"ImportPath": "github.com/honeycombio/honeytail/parsers/nginx",
-			"Rev": "5f8623756309a4bfcdbf3272beac9828fc3743a8"
+			"Rev": "f672d08ef086c809b617601c62dd6da5585f2722"
 		},
 		{
 			"ImportPath": "github.com/honeycombio/libhoney-go",
-			"Comment": "v1.3.3",
-			"Rev": "0c0e8c402eeef843eafc2bad6dccb16baf565d2f"
+			"Comment": "v1.4.0-2-g1782b3e",
+			"Rev": "1782b3ea9b57603d943377079c2c7151049b1448"
 		},
 		{
 			"ImportPath": "github.com/honeycombio/urlshaper",
