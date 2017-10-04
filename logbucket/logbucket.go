@@ -174,6 +174,11 @@ func (o *ObjectDownloadParser) processObject(sess *session.Session, bucketName s
 }
 
 func (o *ObjectDownloadParser) accessLogBucketPageCallback(sess *session.Session, bucketName string, bucketResp *s3.ListObjectsOutput, lastPage bool) bool {
+	logrus.WithFields(logrus.Fields{
+		"bucket_name": bucketName,
+		"num_objects": len(bucketResp.Contents),
+	}).Debug("Executing bucket callback")
+
 	// TODO: This sort doesn't work as originally intended if the paging
 	// comes into play. Consider removing, or gathering all desired objects
 	// as a result of the callback, _then_ sorting and iterating over them.
@@ -190,6 +195,20 @@ func (o *ObjectDownloadParser) accessLogBucketPageCallback(sess *session.Session
 	}
 
 	return !lastPage
+}
+
+func (o *ObjectDownloadParser) TotalPrefix(bucketPrefix, accountID, region string) string {
+	if bucketPrefix != "" {
+		// Add seperator slash so concatenation makes sense.
+		bucketPrefix += "/"
+	}
+
+	// Converted into a string which also is used for the object prefix
+	nowPath := time.Now().UTC().Format("/2006/01/02")
+
+	// For now, get objects for just today.
+	return bucketPrefix + "AWSLogs/" + accountID + "/" + o.Service + "/" + region + nowPath +
+		"/" + accountID + "_" + o.Service + "_" + region + "_" + o.Entity
 }
 
 func (o *ObjectDownloadParser) Ingest(sess *session.Session, bucketName, bucketPrefix string) {
@@ -209,15 +228,9 @@ func (o *ObjectDownloadParser) Ingest(sess *session.Session, bucketName, bucketP
 	ticker := time.NewTicker(5 * time.Minute).C
 	// Start the loop to continually ingest access logs.
 	for {
-		// Converted into a string which also is used for the object
-		// prefix
-		nowPath := time.Now().UTC().Format("/2006/01/02")
-
 		s3svc := s3.New(sess, nil)
 
-		// For now, get objects for just today.
-		totalPrefix := bucketPrefix + "/AWSLogs/" + accountID + "/" + o.Service + "/" + region + nowPath +
-			"/" + accountID + "_" + o.Service + "_" + region + "_" + o.Entity
+		totalPrefix := o.TotalPrefix(bucketPrefix, accountID, region)
 
 		logrus.WithFields(logrus.Fields{
 			"prefix": totalPrefix,
