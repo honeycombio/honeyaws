@@ -51,7 +51,7 @@ func cmdELB(args []string) error {
 
 	if len(args) > 0 {
 		switch args[0] {
-		case "ls":
+		case "ls", "list":
 			for _, lb := range describeLBResp.LoadBalancerDescriptions {
 				fmt.Println(*lb.LoadBalancerName)
 			}
