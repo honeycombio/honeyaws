@@ -147,14 +147,14 @@ func (h *HoneycombPublisher) dynSample(eventsCh <-chan event.Event, sampledCh ch
 		// use backend_status_code and elb_status_code to set sample rate
 		var key string
 		if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
-			if bsc, ok := backendStatusCode.(int); ok {
+			if bsc, ok := backendStatusCode.(int64); ok {
 				key = fmt.Sprintf("%d", bsc)
 			} else {
 				key = "0"
 			}
 		}
 		if elbStatusCode, ok := ev.Data["elb_status_code"]; ok {
-			if esc, ok := elbStatusCode.(int); ok {
+			if esc, ok := elbStatusCode.(int64); ok {
 				key = fmt.Sprintf("%s_%d", key, esc)
 			}
 		}
