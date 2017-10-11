@@ -155,6 +155,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if opt.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+		logrus.WithField("version", versionStr).Debug("Starting honeyelb")
+	}
+
 	if _, err := os.Stat(opt.StateDir); os.IsNotExist(err) {
 		logrus.WithField("dir", opt.StateDir).Fatal("Specified state directory does not exist")
 	}
