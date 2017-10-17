@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/honeycombio/honeyelb/publisher"
-	"io"
 	"compress/gzip"
 )
 
