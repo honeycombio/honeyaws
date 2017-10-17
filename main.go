@@ -139,7 +139,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 
 				downloadParser := logbucket.ObjectDownloadParser{
 					Service:            logbucket.AWSElasticLoadBalancing,
-					Entity:             lbName,
+					Entity:             "app." + lbName,
 					HoneycombPublisher: defaultPublisher,
 					StateDir:           opt.StateDir,
 				}
