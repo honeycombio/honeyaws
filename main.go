@@ -75,7 +75,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			// Use this one publisher instance for all ObjectDownloadParsers.
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, publisher.AWSElasticLoadBalancerFormat)
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, publisher.AWSElasticLoadBalancerFormatV2)
 
 			// For now, just run one goroutine per-LB
 			for _, lbName := range lbNames {
@@ -139,7 +139,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 
 				downloadParser := logbucket.ObjectDownloadParser{
 					Service:            logbucket.AWSElasticLoadBalancing,
-					Entity:             "app." + lbName,
+					Entity:             "app."+lbName,
 					HoneycombPublisher: defaultPublisher,
 					StateDir:           opt.StateDir,
 				}

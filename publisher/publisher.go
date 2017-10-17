@@ -20,12 +20,12 @@ import (
 )
 
 const (
-	AWSElasticLoadBalancerFormat = "aws_elb"
+	AWSElasticLoadBalancerFormatV2 = "aws_elbv2"
 )
 
 var (
 	// 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 0.000016 200 200 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2
-	logFormat           = []byte(fmt.Sprintf(`log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn $trace_id $domain_name ';`, AWSElasticLoadBalancerFormat))
+	logFormat           = []byte(fmt.Sprintf(`log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" $domain_name $chosen_cert_arn';`, AWSElasticLoadBalancerFormatV2))
 	libhoneyInitialized = false
 	formatFileName      string
 )
