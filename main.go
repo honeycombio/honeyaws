@@ -7,7 +7,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/honeycombio/honeyelb/logbucket"
 	"github.com/honeycombio/honeyelb/options"
 	"github.com/honeycombio/honeyelb/publisher"
@@ -41,9 +41,9 @@ func cmdELB(args []string) error {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	elbSvc := elb.New(sess, nil)
+	elbSvc := elbv2.New(sess)
 
-	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elb.DescribeLoadBalancersInput{})
+	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{})
 	if err != nil {
 		return fmt.Errorf("Error describing LBs: ", err)
 		os.Exit(1)
@@ -52,7 +52,7 @@ func cmdELB(args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "ls", "list":
-			for _, lb := range describeLBResp.LoadBalancerDescriptions {
+			for _, lb := range describeLBResp.LoadBalancers {
 				fmt.Println(*lb.LoadBalancerName)
 			}
 
@@ -69,7 +69,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			// Use all available load balancers by default if none
 			// are provided.
 			if len(lbNames) == 0 {
-				for _, lb := range describeLBResp.LoadBalancerDescriptions {
+				for _, lb := range describeLBResp.LoadBalancers {
 					lbNames = append(lbNames, *lb.LoadBalancerName)
 				}
 			}
@@ -83,19 +83,46 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					"lbName": lbName,
 				}).Info("Attempting to ingest LB")
 
-				elbSvc := elb.New(sess, nil)
+				elbSvc := elbv2.New(sess, nil)
 
-				lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elb.DescribeLoadBalancerAttributesInput{
-					LoadBalancerName: aws.String(lbName),
+				describeLBResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
+					Names: []*string{
+						aws.String(lbName),
+					},
+				}) // not walking token because there should be only one
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error describing LBs: ", err)
+					os.Exit(1)
+				}
+				if len(describeLBResp.LoadBalancers) == 0 {
+					fmt.Fprintln(os.Stderr, "Couldn't find load balancer named", lbName)
+					os.Exit(1)
+				}
+				lbArn := describeLBResp.LoadBalancers[0].LoadBalancerArn
+				lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
+					LoadBalancerArn: lbArn,
 				})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Error describing load balancers: ", err)
 					os.Exit(1)
 				}
+				enabled := false
+				bucketName := ""
+				bucketPrefix := ""
+				for _, element := range lbResp.Attributes {
+					fmt.Fprintln(os.Stderr, *element.Key, *element.Value)
+					if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
+						enabled = true
+					}
+					if *element.Key == "access_logs.s3.bucket" {
+						bucketName = *element.Value
+					}
+					if *element.Key == "access_logs.s3.prefix" {
+						bucketPrefix = *element.Value
+					}
+				}
 
-				accessLog := lbResp.LoadBalancerAttributes.AccessLog
-
-				if !*accessLog.Enabled {
+				if !enabled {
 					fmt.Fprintf(os.Stderr, `Access logs are not configured for ELB %q. Please enable them to use the ingest tool.
 
 For reference see this link:
@@ -105,8 +132,9 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 					os.Exit(1)
 				}
 				logrus.WithFields(logrus.Fields{
-					"bucket": *accessLog.S3BucketName,
-					"lbName": lbName,
+					"bucket":       bucketName,
+					"bucketPrefix": bucketPrefix,
+					"lbName":       lbName,
 				}).Info("Access logs are enabled for ELB ♥")
 
 				downloadParser := logbucket.ObjectDownloadParser{
@@ -122,7 +150,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 				// instead using channels:
 				//
 				// (Query Objects to Process) => (Download Objects) => (Parse Objects) => (Send to HC)
-				go downloadParser.Ingest(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix)
+				go downloadParser.Ingest(sess, bucketName, bucketPrefix)
 			}
 
 			signalCh := make(chan os.Signal)

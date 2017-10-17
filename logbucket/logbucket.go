@@ -17,6 +17,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/honeycombio/honeyelb/publisher"
+	"io"
+	"compress/gzip"
 )
 
 const (
@@ -70,8 +72,16 @@ func (o *ObjectDownloadParser) parseEvents(log string) error {
 		return err
 	}
 
+	gz, err := gzip.NewReader(logFile)
+	if err != nil {
+		return err
+	}
+
+	defer logFile.Close()
+	defer gz.Close()
+
 	// Publish will perform the scanning and send the events to Honeycomb.
-	return o.Publish(logFile)
+	return o.Publish(gz)
 }
 
 func (o *ObjectDownloadParser) processObject(sess *session.Session, bucketName string, obj *s3.Object) error {
