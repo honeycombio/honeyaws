@@ -56,6 +56,8 @@ type ObjectDownloadParser struct {
 	// The directory in which to store files indicating the current state
 	// of which objects have been processed.
 	StateDir string
+
+	IsCompressed bool
 }
 
 //TODO: write test and maybe return error also?
@@ -71,16 +73,20 @@ func (o *ObjectDownloadParser) parseEvents(log string) error {
 		return err
 	}
 
-	gz, err := gzip.NewReader(logFile)
-	if err != nil {
-		return err
+	if(o.IsCompressed) {
+		gz, err := gzip.NewReader(logFile)
+		if err != nil {
+			return err
+		}
+
+		defer logFile.Close()
+		defer gz.Close()
+
+		// Publish will perform the scanning and send the events to Honeycomb.
+		return o.Publish(gz)
+	} else {
+		return o.Publish(logFile)
 	}
-
-	defer logFile.Close()
-	defer gz.Close()
-
-	// Publish will perform the scanning and send the events to Honeycomb.
-	return o.Publish(gz)
 }
 
 func (o *ObjectDownloadParser) processObject(sess *session.Session, bucketName string, obj *s3.Object) error {
