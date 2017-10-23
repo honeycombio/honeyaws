@@ -184,6 +184,21 @@ func (h *HoneycombPublisher) sample(eventsCh <-chan event.Event) chan event.Even
 	return sampledCh
 }
 
+func dropNegativeTimes(ev *event.Event) {
+	timeFields := []string{
+		"response_processing_time",
+		"request_processing_time",
+		"backend_processing_time",
+	}
+	for _, f := range timeFields {
+		if t, present := ev.Data[f]; present {
+			if tfloat, isFloat := t.(float64); isFloat && tfloat < 0 {
+				delete(ev.Data, f)
+			}
+		}
+	}
+}
+
 func sendEvents(eventsCh <-chan event.Event) {
 	shaper := requestShaper{&urlshaper.Parser{}}
 	for ev := range eventsCh {
@@ -191,6 +206,7 @@ func sendEvents(eventsCh <-chan event.Event) {
 		libhEv := libhoney.NewEvent()
 		libhEv.Timestamp = ev.Timestamp
 		libhEv.SampleRate = uint(ev.SampleRate)
+		dropNegativeTimes(&ev)
 		if err := libhEv.Add(ev.Data); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"event": ev,
