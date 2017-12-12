@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,6 +12,7 @@ import (
 	"github.com/honeycombio/honeyelb/logbucket"
 	"github.com/honeycombio/honeyelb/options"
 	"github.com/honeycombio/honeyelb/publisher"
+	"github.com/honeycombio/honeyelb/state"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
 )
@@ -26,7 +28,7 @@ func init() {
 	if BuildID == "" {
 		versionStr = "dev"
 	} else {
-		versionStr = "1." + BuildID
+		versionStr = BuildID
 	}
 
 	// init libhoney user agent properly
@@ -75,7 +77,9 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			// Use this one publisher instance for all ObjectDownloadParsers.
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, publisher.AWSElasticLoadBalancerFormat)
+			stater := state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancing)
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewELBEventParser(opt.SampleRate))
+			downloadsCh := make(chan state.DownloadedObject)
 
 			// For now, just run one goroutine per-LB
 			for _, lbName := range lbNames {
@@ -109,28 +113,19 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 					"lbName": lbName,
 				}).Info("Access logs are enabled for ELB ♥")
 
-				downloadParser := logbucket.ObjectDownloadParser{
-					Service:            logbucket.AWSElasticLoadBalancing,
-					Entity:             lbName,
-					HoneycombPublisher: defaultPublisher,
-					StateDir:           opt.StateDir,
-				}
+				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
+				downloader := logbucket.NewDownloader(sess, stater, elbDownloader)
 
-				// TODO: One-goroutine-per-LB is a bit silly.
-				//
-				// Finish implementing a proper 'pipeline'
-				// instead using channels:
-				//
-				// (Query Objects to Process) => (Download Objects) => (Parse Objects) => (Send to HC)
-				go downloadParser.Ingest(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix)
+				// TODO: One-goroutine-per-LB feels a bit
+				// silly.
+				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)
-
-			// block forever (until interrupt)
-			select {
-			case <-signalCh:
-				logrus.Info("Exiting due to interrupt.")
+			signal.Notify(signalCh, os.Interrupt)
+			go func() {
+				<-signalCh
+				logrus.Fatal("Exiting due to interrupt.")
 				// TODO(nathanleclaire): Cleanup before
 				// exiting.
 				//
@@ -140,7 +135,13 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 				//    parsing / sending to finish so that state of
 				//    parsing "cursor" can be written to the JSON
 				//    file.
-				os.Exit(0)
+			}()
+
+			for {
+				download := <-downloadsCh
+				if err := defaultPublisher.Publish(download); err != nil {
+					logrus.WithField("object", download).Error("Cannot properly publish downloaded object")
+				}
 			}
 		}
 	}
@@ -152,12 +153,22 @@ func main() {
 	flagParser := flag.NewParser(opt, flag.Default)
 	args, err := flagParser.Parse()
 	if err != nil {
-		os.Exit(1)
+		logrus.Fatal(err)
 	}
 
 	if opt.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
-		logrus.WithField("version", versionStr).Debug("Starting honeyelb")
+	}
+
+	formatter := &logrus.TextFormatter{
+		FullTimestamp: true,
+	}
+	logrus.SetFormatter(formatter)
+
+	logrus.WithField("version", BuildID).Debug("Program starting")
+
+	if opt.Dataset == "aws-$SERVICE-access" {
+		opt.Dataset = "aws-elb-access"
 	}
 
 	if _, err := os.Stat(opt.StateDir); os.IsNotExist(err) {

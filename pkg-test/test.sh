@@ -8,8 +8,8 @@ set -e
 if [ "$#" -ne 1 ]; then echo "usage: test.sh <build id>"; exit 1; fi
 
 BUILDID=$1
-DEB=honeyelb_${BUILDID}_amd64.deb
-RPM=honeyelb-${BUILDID}-1.x86_64.rpm
+DEB=honeycomb-aws_${BUILDID}_amd64.deb
+RPM=honeycomb-aws-${BUILDID}-1.x86_64.rpm
 DIR=`dirname $0`
 echo docker build --build-arg package=$DEB -f Dockerfile.deb $DIR
 

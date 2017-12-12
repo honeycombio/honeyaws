@@ -1,0 +1,12 @@
+# Upstart job for honeycloudfront
+# https://honeycomb.io/
+
+description     "Honeycomb CloudFront Daemon"
+author          "Nathan LeClaire <nathan@honeycomb.io>"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+
+exec su -s /bin/sh -c 'exec "$0" "$@"' honeycomb -- /usr/bin/honeycloudfront --statedir /var/lib/honeycloudfront ingest
