@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/honeycombio/honeycomb-aws/meta"
-	"github.com/honeycombio/honeycomb-aws/state"
+	"github.com/honeycombio/honeyaws/meta"
+	"github.com/honeycombio/honeyaws/state"
 )
 
 const (

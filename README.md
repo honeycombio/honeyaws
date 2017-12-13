@@ -1,6 +1,6 @@
 ## Honeycomb AWS Bundle
 
-`honeycomb-aws` is a collection of programs to enable observability in your AWS
+`honeyaws` is a collection of programs to enable observability in your AWS
 infrastructure. They get information from AWS and publish it to Honeycomb as
 events for later querying and debugging.
 
@@ -17,7 +17,7 @@ To install a tool from the Honeycomb AWS Bundle, `go get` or `go install` from
 the properly directory in `cmd/` like so:
 
 ```
-$ go get github.com/honeycombio/honeycomb-aws/cmd/honeyelb
+$ go get github.com/honeycombio/honeyaws/cmd/honeyelb
 ```
 
 For an official build, see the docs for the tool you are interested in (linked
