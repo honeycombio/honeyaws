@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build deb or rpm packages for honeycomb-aws.
+# Build deb or rpm packages for honeyaws.
 set -e
 
 function usage() {
@@ -23,7 +23,7 @@ if [ -z "$version" ] || [ -z "$pkg_type" ]; then
     usage
 fi
 
-fpm -s dir -n honeycomb-aws \
+fpm -s dir -n honeyaws \
     -m "Honeycomb <team@honeycomb.io>" \
     -p $GOPATH/bin \
     -v $version \

@@ -1,8 +1,8 @@
 FROM golang:alpine
 
 RUN apk add --update --no-cache git
-RUN go get github.com/honeycombio/honeycomb-aws/cmd/honeyelb
-RUN go get github.com/honeycombio/honeycomb-aws/cmd/honeycloudfront
+RUN go get github.com/honeycombio/honeyaws/cmd/honeyelb
+RUN go get github.com/honeycombio/honeyaws/cmd/honeycloudfront
 
 FROM alpine
 

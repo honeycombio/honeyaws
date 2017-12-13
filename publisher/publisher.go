@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/honeycombio/honeycomb-aws/options"
-	"github.com/honeycombio/honeycomb-aws/state"
+	"github.com/honeycombio/honeyaws/options"
+	"github.com/honeycombio/honeyaws/state"
 	"github.com/honeycombio/honeytail/event"
 	"github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/urlshaper"

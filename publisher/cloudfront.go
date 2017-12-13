@@ -11,7 +11,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	dynsampler "github.com/honeycombio/dynsampler-go"
-	"github.com/honeycombio/honeycomb-aws/state"
+	"github.com/honeycombio/honeyaws/state"
 	"github.com/honeycombio/honeytail/event"
 	"github.com/honeycombio/honeytail/parsers/nginx"
 )
