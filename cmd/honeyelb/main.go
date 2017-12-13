@@ -47,7 +47,7 @@ func cmdELB(args []string) error {
 
 	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elb.DescribeLoadBalancersInput{})
 	if err != nil {
-		return fmt.Errorf("Error describing LBs: ", err)
+		return err
 		os.Exit(1)
 	}
 
@@ -93,7 +93,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					LoadBalancerName: aws.String(lbName),
 				})
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "Error describing load balancers: ", err)
+					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
 
