@@ -48,7 +48,7 @@ func cmdCloudFront(args []string) error {
 
 	listDistributionsResp, err := cloudfrontSvc.ListDistributions(&cloudfront.ListDistributionsInput{})
 	if err != nil {
-		return fmt.Errorf("Error describing distributions: ", err)
+		return err
 		os.Exit(1)
 	}
 
