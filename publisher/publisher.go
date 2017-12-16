@@ -3,6 +3,7 @@ package publisher
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
@@ -126,8 +127,16 @@ func dropNegativeTimes(ev *event.Event) {
 		"time_taken", // CloudFront -- not documented as ever being set to -1, but check anyway
 	}
 	for _, f := range timeFields {
+		var tFloat float64
 		if t, present := ev.Data[f]; present {
-			if tfloat, isFloat := t.(float64); isFloat && tfloat < 0 {
+			switch t.(type) {
+			case int64:
+				tFloat = float64(t.(int64))
+				log.Print(tFloat)
+			case float64:
+				tFloat = t.(float64)
+			}
+			if tFloat < 0 {
 				delete(ev.Data, f)
 			}
 		}
