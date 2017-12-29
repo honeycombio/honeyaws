@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/honeycombio/honeyelb",
+	"ImportPath": "github.com/honeycombio/honeyaws",
 	"GoVersion": "go1.9",
 	"GodepVersion": "v79",
 	"Packages": [
@@ -102,6 +102,16 @@
 			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
 		},
 		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/json/jsonutil",
+			"Comment": "v1.10.15-3-ga42816b7",
+			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/jsonrpc",
+			"Comment": "v1.10.15-3-ga42816b7",
+			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+		},
+		{
 			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query",
 			"Comment": "v1.10.15-3-ga42816b7",
 			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
@@ -128,6 +138,16 @@
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/cloudfront",
+			"Comment": "v1.10.15-3-ga42816b7",
+			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/dynamodb",
+			"Comment": "v1.10.15-3-ga42816b7",
+			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute",
 			"Comment": "v1.10.15-3-ga42816b7",
 			"Rev": "a42816b7219102ae19ac57b8737af5fbe1f90afb"
 		},

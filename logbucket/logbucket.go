@@ -41,15 +41,17 @@ type Downloader struct {
 	Sess              *session.Session
 	DownloadedObjects chan state.DownloadedObject
 	ObjectsToDownload chan *s3.Object
+	BackfillInterval  time.Duration
 }
 
-func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader) *Downloader {
+func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int) *Downloader {
 	return &Downloader{
 		Stater:            stater,
 		ObjectDownloader:  downloader,
 		Sess:              sess,
 		DownloadedObjects: make(chan state.DownloadedObject),
 		ObjectsToDownload: make(chan *s3.Object),
+		BackfillInterval:  time.Hour * time.Duration(backfill),
 	}
 }
 
@@ -180,7 +182,7 @@ func (d *Downloader) accessLogBucketPageCallback(processedObjects map[string]tim
 			continue
 		}
 
-		if time.Since(*obj.LastModified) < state.BackfillInterval {
+		if time.Since(*obj.LastModified) < d.BackfillInterval {
 			d.ObjectsToDownload <- obj
 		}
 	}

@@ -8,11 +8,19 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 const (
-	stateFileFormat  = "%s-state.json"
-	BackfillInterval = time.Hour
+	stateFileFormat = "%s-state.json"
+	DynamoTableName = "HoneyAWSAccessLogBuckets"
+	TTLDefault      = time.Hour * 24 * 7
 )
 
 // Stater lets us gain insight into the current state of object processing. It
@@ -34,19 +42,127 @@ type DownloadedObject struct {
 	Object, Filename string
 }
 
+type DynamoDBStater struct {
+	Session          *session.Session
+	Service          string
+	BackfillInterval time.Duration
+}
+
+func NewDynamoDBStater(session *session.Session, service string, backfillHrs int) *DynamoDBStater {
+
+	return &DynamoDBStater{
+		Session:          session,
+		Service:          service,
+		BackfillInterval: time.Hour * time.Duration(backfillHrs),
+	}
+}
+
+// Used for unmarshaling and adding objects to DynamoDB
+type Record struct {
+	S3Object string
+	Time     time.Time
+	TTL      int64 //future date formatted as unix seconds-since-epoch
+}
+
+// list of processed objects
+func (d *DynamoDBStater) ProcessedObjects() (map[string]time.Time, error) {
+	objs := make(map[string]time.Time)
+
+	var records []Record
+
+	svc := dynamodb.New(d.Session)
+	err := svc.ScanPages(&dynamodb.ScanInput{
+		TableName: aws.String(DynamoTableName),
+	}, func(logs *dynamodb.ScanOutput, last bool) bool {
+		recs := []Record{}
+
+		err := dynamodbattribute.UnmarshalListOfMaps(logs.Items, &recs)
+
+		// break out of function
+		if err != nil {
+			logrus.WithField("error", err).Debug("Failed to unmarshal DynamoDB Scan Items")
+			return false
+		}
+
+		records = append(records, recs...)
+		for _, rec := range records {
+			// break out of the scan, we've reached the end of our
+			// backfill interval
+			if time.Since(rec.Time) > d.BackfillInterval {
+				return false
+			}
+		}
+
+		return true
+	})
+
+	if err != nil {
+		return objs, fmt.Errorf("Error scanning DynamoDB, %v", err)
+	}
+
+	for _, record := range records {
+		objs[record.S3Object] = record.Time
+	}
+
+	return objs, nil
+}
+
+func (d *DynamoDBStater) SetProcessed(s3object string) error {
+
+	svc := dynamodb.New(d.Session)
+
+	objMap := Record{
+		S3Object: s3object,
+		Time:     time.Now(),
+		TTL:      time.Now().Add(TTLDefault).Unix(), //
+	}
+
+	obj, err := dynamodbattribute.MarshalMap(objMap)
+
+	if err != nil {
+		return fmt.Errorf("Marshalling DynamoDB object failed: %s", err)
+	}
+
+	// add object to dynamodb using conditional
+	// if the object exists, no write happens
+	input := &dynamodb.PutItemInput{
+		Item:                obj,
+		TableName:           aws.String(DynamoTableName),
+		ConditionExpression: aws.String("attribute_not_exists(S3Object)"),
+	}
+
+	_, err = svc.PutItem(input)
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok {
+			// we want this to happen if object already exists
+			if awsErr.Code() != dynamodb.ErrCodeConditionalCheckFailedException {
+				return fmt.Errorf("PutItem failed: %s", err)
+			}
+
+		}
+		// if it is the conditional check, we can just pop out and
+		// ignore this object!
+		return nil
+	}
+
+	return nil
+}
+
 // FileStater is an implementation for indicating processing state using the
 // local filesystem for backing storage.
 type FileStater struct {
 	*sync.Mutex
-	StateDir string
-	Service  string
+	StateDir         string
+	Service          string
+	BackfillInterval time.Duration
 }
 
-func NewFileStater(stateDir, service string) *FileStater {
+func NewFileStater(stateDir, service string, backfillHrs int) *FileStater {
 	return &FileStater{
-		Mutex:    &sync.Mutex{},
-		StateDir: stateDir,
-		Service:  service,
+		Mutex:            &sync.Mutex{},
+		StateDir:         stateDir,
+		Service:          service,
+		BackfillInterval: time.Hour * time.Duration(backfillHrs),
 	}
 }
 
@@ -96,7 +212,7 @@ func (f *FileStater) SetProcessed(object string) error {
 	// Reap old objects (outside of the "backfill interval"), otherwise the
 	// state file will grow indefinitely.
 	for k, v := range processedObjects {
-		if time.Since(v) > BackfillInterval {
+		if time.Since(v) > f.BackfillInterval {
 			delete(processedObjects, k)
 		}
 	}
