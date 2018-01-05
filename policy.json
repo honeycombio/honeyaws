@@ -6,7 +6,9 @@
             "Effect": "Allow",
             "Action": [
                 "elasticloadbalancing:DescribeLoadBalancerAttributes",
-                "elasticloadbalancing:DescribeLoadBalancers"
+                "elasticloadbalancing:DescribeLoadBalancers",
+                "cloudfront:ListDistributions",
+                "cloudfront:GetDistributionConfig"
             ],
             "Resource": [
                 "*"
