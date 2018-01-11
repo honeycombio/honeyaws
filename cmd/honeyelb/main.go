@@ -153,7 +153,7 @@ func main() {
 	flagParser := flag.NewParser(opt, flag.Default)
 	args, err := flagParser.Parse()
 	if err != nil {
-		logrus.Fatal(err)
+		os.Exit(1)
 	}
 
 	if opt.Debug {
