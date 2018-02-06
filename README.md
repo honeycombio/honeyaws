@@ -59,8 +59,8 @@ To ingest all LBs, use `honeyelb ingest` without any non-flag arguments.
 
 ## High Availability
 
-There exists the option to run `honeycomb-aws` in a high availability
-environment. This is done using [DynamoDB](https://aws.amazon.com/dynamodb/)
+There exists the option to run the Honeycomb AWS binaries in a high availability
+mode. This is done using [DynamoDB](https://aws.amazon.com/dynamodb/)
 for management of processed log files. There are a few things that must be
 set up before running `highavail`.
 
