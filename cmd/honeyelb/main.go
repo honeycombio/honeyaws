@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/honeycombio/honeyaws/logbucket"
 	"github.com/honeycombio/honeyaws/options"
@@ -76,8 +78,33 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				}
 			}
 
-			// Use this one publisher instance for all ObjectDownloadParsers.
-			stater := state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancing)
+			var stater state.Stater
+
+			if opt.BackfillHr < 1 || opt.BackfillHr > 168 {
+				logrus.WithField("hours", opt.BackfillHr).Fatal("--backfill requires an hour input between 1 and 168")
+			}
+
+			if opt.HighAvail {
+				svc := dynamodb.New(sess)
+				input := &dynamodb.DescribeTableInput{
+					TableName: aws.String(state.DynamoTableName),
+				}
+				_, err := svc.DescribeTable(input)
+				if err != nil {
+					// For some reason, we cannot write to
+					// the table or access it
+					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
+				}
+
+				stater = state.NewDynamoDBStater(sess, logbucket.AWSElasticLoadBalancing, opt.BackfillHr)
+				logrus.Info("State tracking with high availability enabled - using DynamoDB")
+
+			} else {
+				stater = state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancing, opt.BackfillHr)
+				logrus.Info("State tracking enabled - using local file system.")
+			}
+			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
+
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewELBEventParser(opt.SampleRate))
 			downloadsCh := make(chan state.DownloadedObject)
 
@@ -114,7 +141,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 				}).Info("Access logs are enabled for ELB ♥")
 
 				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, elbDownloader)
+				downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
 
 				// TODO: One-goroutine-per-LB feels a bit
 				// silly.
@@ -123,6 +150,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 
 			signalCh := make(chan os.Signal)
 			signal.Notify(signalCh, os.Interrupt)
+
 			go func() {
 				<-signalCh
 				logrus.Fatal("Exiting due to interrupt.")

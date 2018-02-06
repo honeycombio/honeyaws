@@ -1,14 +1,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: A DynamoDB template for high availability HoneyELB 
+Description: A DynamoDB template for high availability HoneyAWS
 Parameters:
-  DynamoReadCapacityUnits: 
+  DynamoReadCapacityUnits:
     Description: "Provisioned read throughput"
     Type: "Number"
     Default: "1"
     MinValue: "1"
     MaxValue: "10000"
     ConstraintDescription: "must be between 1 and 10000"
-  DynamoWriteCapacityUnits: 
+  DynamoWriteCapacityUnits:
     Description: "Provisioned read throughput"
     Type: "Number"
     Default: "1"
@@ -16,33 +16,33 @@ Parameters:
     MaxValue: "10000"
     ConstraintDescription: "must be between 1 and 10000"
 Resources:
-  HoneyELBAccessLogBuckets:
+  HoneyAWSAccessLogBuckets:
     Type: "AWS::DynamoDB::Table"
-    Properties: 
-      TableName: "HoneyELBAccessLogBuckets"
-      AttributeDefinitions: 
-        - 
-          AttributeName: "S3object"
+    Properties:
+      TableName: "HoneyAWSAccessLogBuckets"
+      AttributeDefinitions:
+        -
+          AttributeName: "S3Object"
           AttributeType: "S"
         - 
           AttributeName: "Time"
           AttributeType: "S"
-      KeySchema: 
+      KeySchema:
         -
-          AttributeName: "S3object"
+          AttributeName: "S3Object"
           KeyType: "HASH"
         -
           AttributeName: "Time"
           KeyType: "RANGE"
-      ProvisionedThroughput: 
-        ReadCapacityUnits:  
+      ProvisionedThroughput:
+        ReadCapacityUnits:
           Ref: "DynamoReadCapacityUnits"
-        WriteCapacityUnits: 
+        WriteCapacityUnits:
           Ref: "DynamoWriteCapacityUnits"
+      TimeToLiveSpecification:
+        AttributeName: "TTL"
+        Enabled: True
 Outputs:
   TableName:
-    Value: !Ref HoneyELBAccessLogBuckets 
+    Value: !Ref HoneyAWSAccessLogBuckets
     Description: "Table name of the newly created DynamoDB table"
-  
-
-  

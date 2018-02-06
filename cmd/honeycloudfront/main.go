@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudfront"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/honeycombio/honeyaws/logbucket"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/publisher"
@@ -77,7 +79,33 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				}
 			}
 
-			stater := state.NewFileStater(opt.StateDir, logbucket.AWSCloudFront)
+			var stater state.Stater
+
+			if opt.BackfillHr < 1 || opt.BackfillHr > 168 {
+				logrus.WithField("hours", opt.BackfillHr).Fatal("--backfill requires an hour input between 1 and 168")
+			}
+
+			if opt.HighAvail {
+				svc := dynamodb.New(sess)
+				input := &dynamodb.DescribeTableInput{
+					TableName: aws.String(state.DynamoTableName),
+				}
+				_, err := svc.DescribeTable(input)
+				if err != nil {
+					// For some reason, we cannot write to
+					// the table or access it
+					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
+				}
+
+				stater = state.NewDynamoDBStater(sess, logbucket.AWSCloudFront, opt.BackfillHr)
+				logrus.Info("State tracking with high availability enabled - using DynamoDB")
+
+			} else {
+				stater = state.NewFileStater(opt.StateDir, logbucket.AWSCloudFront, opt.BackfillHr)
+				logrus.Info("State tracking enabled - using local file system.")
+			}
+			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
+
 			downloadsCh := make(chan state.DownloadedObject)
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudFrontEventParser(opt.SampleRate))
 
@@ -124,7 +152,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 				}).Info("Access logs are enabled for CloudFront distribution ♥")
 
 				cloudfrontDownloader := logbucket.NewCloudFrontDownloader(bucket, *loggingConfig.Prefix, id)
-				downloader := logbucket.NewDownloader(sess, stater, cloudfrontDownloader)
+				downloader := logbucket.NewDownloader(sess, stater, cloudfrontDownloader, opt.BackfillHr)
 				go downloader.Download(downloadsCh)
 			}
 
