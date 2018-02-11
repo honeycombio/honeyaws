@@ -11,6 +11,9 @@ addons:
 
 dist: trusty
 
+services:
+  - docker
+
 go:
     - 1.8
 
@@ -33,3 +36,13 @@ before_install:
 
 install:
         - true # HACK: fixes travis-CI lack of support for vendor/ + godeps
+
+after_success:
+  - set -e
+  - if [[ "${TRAVIS_BRANCH}" == "master" && "${TRAVIS_PULL_REQUEST}" == false ]]; then
+      docker build -t honeycombio/honeyaws:latest .;
+      docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD};
+      docker tag honeycombio/honeyaws:latest honeycombio/honeyaws:1.${TRAVIS_BUILD_NUMBER};
+      docker push honeycombio/honeyaws:latest;
+      docker push honeycombio/honeyaws:1.${TRAVIS_BUILD_NUMBER};
+    fi;
