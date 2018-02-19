@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+	"compress/gzip"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -56,7 +57,7 @@ func NewDownloader(sess *session.Session, stater state.Stater, downloader Object
 }
 
 type ELBDownloader struct {
-	Prefix, BucketName, AccountID, Region, LBName string
+	Prefix, BucketName, AccountID, Region, LBName, LBType string
 }
 
 type CloudFrontDownloader struct {
@@ -87,7 +88,7 @@ func (d *CloudFrontDownloader) Bucket() string {
 	return d.BucketName
 }
 
-func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string) *ELBDownloader {
+func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string, lbType string) *ELBDownloader {
 	metadata := meta.Data(sess)
 
 	// If the user specified a prefix for the access logs in the bucket,
@@ -102,14 +103,26 @@ func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 		BucketName: bucketName,
 		Prefix:     bucketPrefix,
 		LBName:     lbName,
+		LBType:     lbType,
 	}
 }
 
 // pass in time.Now().UTC()
 func (d *ELBDownloader) ObjectPrefix(day time.Time) string {
+	
+	var urlModifier string
+	
+	if d.LBType == "alb" {
+		urlModifier = "_app."
+	} else if d.LBType == "elb" {
+		urlModifier = "_"
+	} else {
+		fmt.Errorf("Unsupported load balancer type")
+	}
+
 	dayPath := day.Format("/2006/01/02")
 	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + AWSElasticLoadBalancing + "/" + d.Region + dayPath +
-		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + "_" + d.LBName
+		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + urlModifier + d.LBName
 }
 
 func (d *ELBDownloader) String() string {
@@ -142,16 +155,58 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 	if err != nil {
 		return fmt.Errorf("Error downloading object file: %s", err)
 	}
-
 	logrus.WithFields(logrus.Fields{
 		"bytes":  nBytes,
 		"file":   f.Name(),
 		"entity": d.String(),
 	}).Info("Successfully downloaded object")
+	
+	// TODO: replace ioutil.ReadFile with a peeker
+	contents, err := ioutil.ReadFile(f.Name())	
+	if contents[0] == 31 && contents[1] == 139 {
 
-	d.DownloadedObjects <- state.DownloadedObject{
-		Filename: f.Name(),
-		Object:   *obj.Key,
+			gzipped, err := ioutil.TempFile("", "hc-entity-ingest-unzipped")
+
+			g, err := os.Open(f.Name())
+
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			gzf, err := gzip.NewReader(g)
+
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			s, err := ioutil.ReadAll(gzf)
+
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			_, err = gzipped.Write(s)
+
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			defer g.Close()
+			defer gzf.Close()
+
+			d.DownloadedObjects <- state.DownloadedObject{
+			Filename: gzipped.Name(),
+			Object:   *obj.Key,
+		}
+	} else {
+		d.DownloadedObjects <- state.DownloadedObject{
+			Filename: f.Name(),
+			Object:   *obj.Key,
+		}
 	}
 
 	return nil

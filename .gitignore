@@ -1,2 +1,3 @@
 *.swp
 glide.lock
+*state.json
