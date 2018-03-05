@@ -8,6 +8,7 @@ events for later querying and debugging.
   ([docs](https://honeycomb.io/docs/connect/aws-elastic-load-balancer))
 - `honeycloudfront` - A tool for ingesting CloudFront access logs.
   ([docs](https://honeycomb.io/docs/connect/aws-cloudfront/))
+- `honeycloudtrail` - A tool for ingesting CloudTrail logs
 
 The Honeycomb AWS Bundle is currently considered in beta. It is OK to use, but
 may have occasional rough edges or bugs.

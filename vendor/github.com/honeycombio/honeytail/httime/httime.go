@@ -1,6 +1,7 @@
 package httime
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -10,13 +11,17 @@ import (
 
 const (
 	StrftimeChar     = "%"
-	UnixTimestampFmt = "%s"
+	UnixTimestampFmt = "%s(%L)?"
 )
 
 var (
-	DefaultNower           Nower = &RealNower{}
-	warnedAboutTime              = false
-	possibleTimeFieldNames       = []string{
+	// DefaultNower returns current time when called with Now() unless overridden
+	DefaultNower Nower = &RealNower{}
+	// Location defaults to UTC unless overridden
+	Location *time.Location = time.UTC
+
+	warnedAboutTime        = false
+	possibleTimeFieldNames = []string{
 		"time", "Time",
 		"timestamp", "Timestamp", "TimeStamp",
 		"date", "Date",
@@ -150,11 +155,16 @@ func GetTimestamp(m map[string]interface{}, timeFieldName, timeFieldFormat strin
 	return ts
 }
 
+// Parse wraps time.ParseInLocation to use httime's Location from parsers
+func Parse(format, timespec string) (time.Time, error) {
+	return time.ParseInLocation(format, timespec, Location)
+}
+
 // convertTimeFormat tries to handle C-style time formats alongside Go's
 // existing time.Parse behavior.
 func convertTimeFormat(layout string) string {
-	for fmt, conv := range convertMapping {
-		layout = strings.Replace(layout, fmt, conv, -1)
+	for format, conv := range convertMapping {
+		layout = strings.Replace(layout, format, conv, -1)
 	}
 	return layout
 }
@@ -168,29 +178,39 @@ func tryTimeFormats(t, intendedFormat string) time.Time {
 		if unix, err := strconv.ParseInt(t, 0, 64); err == nil {
 			return time.Unix(unix, 0)
 		}
+		// millis
+		if unix, err := strconv.ParseFloat(t, 64); err == nil {
+			splitStr := strings.Split(t, ".")
+			if len(splitStr) == 2 && len(splitStr[1]) == 3 {
+				floatPart, err := strconv.ParseInt(splitStr[1], 10, 64)
+				if err == nil {
+					return time.Unix(int64(math.Trunc(unix)), floatPart*int64(time.Millisecond))
+				}
+			}
+		}
 	}
 	if intendedFormat != "" {
 		format := strings.Replace(intendedFormat, ",", ".", -1)
 		if strings.Contains(format, StrftimeChar) {
-			if ts, err := time.Parse(convertTimeFormat(format), t); err == nil {
+			if ts, err := Parse(convertTimeFormat(format), t); err == nil {
 				return ts
 			}
 		}
 
 		// Still try Go style, just in case
-		if ts, err := time.Parse(format, t); err == nil {
+		if ts, err := Parse(format, t); err == nil {
 			return ts
 		}
 	}
 
 	var ts time.Time
-	if tOther, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", t); err == nil {
+	if tOther, err := Parse("2006-01-02 15:04:05.999999999 -0700 MST", t); err == nil {
 		ts = tOther
-	} else if tOther, err := time.Parse(time.RFC3339Nano, t); err == nil {
+	} else if tOther, err := Parse(time.RFC3339Nano, t); err == nil {
 		ts = tOther
-	} else if tOther, err := time.Parse(time.RubyDate, t); err == nil {
+	} else if tOther, err := Parse(time.RubyDate, t); err == nil {
 		ts = tOther
-	} else if tOther, err := time.Parse(time.UnixDate, t); err == nil {
+	} else if tOther, err := Parse(time.UnixDate, t); err == nil {
 		ts = tOther
 	}
 	return ts

@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudfront"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/honeycombio/honeyaws/logbucket"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/publisher"
@@ -86,19 +85,12 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			if opt.HighAvail {
-				svc := dynamodb.New(sess)
-				input := &dynamodb.DescribeTableInput{
-					TableName: aws.String(state.DynamoTableName),
-				}
-				_, err := svc.DescribeTable(input)
+				stater, err = state.NewDynamoDBStater(sess, logbucket.AWSCloudFront, opt.BackfillHr)
+
 				if err != nil {
-					// For some reason, we cannot write to
-					// the table or access it
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
 				}
-
-				stater = state.NewDynamoDBStater(sess, logbucket.AWSCloudFront, opt.BackfillHr)
-				logrus.Info("State tracking with high availability enabled - using DynamoDB")
+				logrus.Info("High availability enabled - using DynamoDB")
 
 			} else {
 				stater = state.NewFileStater(opt.StateDir, logbucket.AWSCloudFront, opt.BackfillHr)
