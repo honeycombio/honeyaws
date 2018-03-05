@@ -9,7 +9,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/honeycombio/honeyaws/logbucket"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/publisher"
@@ -33,10 +33,10 @@ func init() {
 	}
 
 	// init libhoney user agent properly
-	libhoney.UserAgentAddition = "honeyelb/" + versionStr
+	libhoney.UserAgentAddition = "honeycloudtrail/" + versionStr
 }
 
-func cmdELB(args []string) error {
+func cmdCloudTrail(args []string) error {
 	// TODO: Would be nice to have this more highly configurable.
 	//
 	// Will just use environment config right now, e.g., default profile.
@@ -44,9 +44,10 @@ func cmdELB(args []string) error {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	elbSvc := elb.New(sess, nil)
+	cloudtrailSvc := cloudtrail.New(sess, nil)
 
-	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elb.DescribeLoadBalancersInput{})
+	listTrailsResp, err := cloudtrailSvc.DescribeTrails(&cloudtrail.DescribeTrailsInput{})
+
 	if err != nil {
 		return err
 		os.Exit(1)
@@ -55,10 +56,9 @@ func cmdELB(args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "ls", "list":
-			for _, lb := range describeLBResp.LoadBalancerDescriptions {
-				fmt.Println(*lb.LoadBalancerName)
+			for _, trailSummary := range listTrailsResp.TrailList {
+				fmt.Println(*trailSummary.Name)
 			}
-
 			return nil
 
 		case "ingest":
@@ -67,14 +67,25 @@ func cmdELB(args []string) error {
 Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
-			lbNames := args[1:]
+			trailNames := args[1:]
 
-			// Use all available load balancers by default if none
-			// are provided.
-			if len(lbNames) == 0 {
-				for _, lb := range describeLBResp.LoadBalancerDescriptions {
-					lbNames = append(lbNames, *lb.LoadBalancerName)
+			if len(trailNames) == 0 {
+				for _, trail := range listTrailsResp.TrailList {
+					trailNames = append(trailNames, *trail.Name)
 				}
+			}
+
+			trailListResp, err := cloudtrailSvc.DescribeTrails(&cloudtrail.DescribeTrailsInput{
+				TrailNameList: aws.StringSlice(trailNames),
+			})
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error getting trail descriptions: ", err)
+				os.Exit(1)
+			}
+
+			if len(trailListResp.TrailList) == 0 {
+				logrus.Fatal(`No valid trails listed. Try using ls to list available trails or refer to the README.`)
+				os.Exit(1)
 			}
 
 			var stater state.Stater
@@ -84,76 +95,56 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			if opt.HighAvail {
-				stater, err = state.NewDynamoDBStater(sess, logbucket.AWSElasticLoadBalancing, opt.BackfillHr)
+				stater, err = state.NewDynamoDBStater(sess, logbucket.AWSCloudTrail, opt.BackfillHr)
 				if err != nil {
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
 				}
 				logrus.Info("High availability enabled - using DynamoDB")
 
 			} else {
-				stater = state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancing, opt.BackfillHr)
+				stater = state.NewFileStater(opt.StateDir, logbucket.AWSCloudTrail, opt.BackfillHr)
 				logrus.Info("State tracking enabled - using local file system.")
 			}
 			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
 
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewELBEventParser(opt.SampleRate))
 			downloadsCh := make(chan state.DownloadedObject)
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudTrailEventParser(opt.SampleRate))
 
-			// For now, just run one goroutine per-LB
-			for _, lbName := range lbNames {
-				logrus.WithFields(logrus.Fields{
-					"lbName": lbName,
-				}).Info("Attempting to ingest LB")
+			for _, trail := range trailListResp.TrailList {
 
-				elbSvc := elb.New(sess, nil)
+				var prefix string
 
-				lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elb.DescribeLoadBalancerAttributesInput{
-					LoadBalancerName: aws.String(lbName),
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
+				s3Bucket := trail.S3BucketName
+				// we want to check if the field is null
+				if s3Bucket == nil {
 
-				accessLog := lbResp.LoadBalancerAttributes.AccessLog
-
-				if !*accessLog.Enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ELB %q. Please enable them to use the ingest tool.
+					fmt.Fprintf(os.Stderr, `%q does not currently have an S3 bucket that it is writing logs to. Please enable them to use the ingest tool. 
 
 For reference see this link:
+https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html `, *trail.Name)
 
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
-`, lbName)
 					os.Exit(1)
 				}
+				if trail.S3KeyPrefix == nil {
+					prefix = ""
+				} else {
+					prefix = *trail.S3KeyPrefix
+				}
 				logrus.WithFields(logrus.Fields{
-					"bucket": *accessLog.S3BucketName,
-					"lbName": lbName,
-				}).Info("Access logs are enabled for ELB ♥")
+					"name":   *trail.Name,
+					"prefix": prefix,
+				}).Info("Access logs are enabled for CloudTrail trails")
 
-				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
-
-				// TODO: One-goroutine-per-LB feels a bit
-				// silly.
+				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(sess, *s3Bucket, prefix, *trail.TrailARN)
+				downloader := logbucket.NewDownloader(sess, stater, cloudtrailDownloader, opt.BackfillHr)
 				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)
 			signal.Notify(signalCh, os.Interrupt)
-
 			go func() {
 				<-signalCh
 				logrus.Fatal("Exiting due to interrupt.")
-				// TODO(nathanleclaire): Cleanup before
-				// exiting.
-				//
-				// 1. Delete format file, even
-				//    though it's in /tmp.
-				// 2. Also, wait for existing in-flight object
-				//    parsing / sending to finish so that state of
-				//    parsing "cursor" can be written to the JSON
-				//    file.
 			}()
 
 			for {
@@ -162,7 +153,9 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 					logrus.WithField("object", download).Error("Cannot properly publish downloaded object")
 				}
 			}
+
 		}
+
 	}
 
 	return fmt.Errorf("Subcommand %q not recognized", args[0])
@@ -187,7 +180,7 @@ func main() {
 	logrus.WithField("version", BuildID).Debug("Program starting")
 
 	if opt.Dataset == "aws-$SERVICE-access" {
-		opt.Dataset = "aws-elb-access"
+		opt.Dataset = "aws-cloudtrail-access"
 	}
 
 	if _, err := os.Stat(opt.StateDir); os.IsNotExist(err) {
@@ -195,18 +188,18 @@ func main() {
 	}
 
 	if opt.Version {
-		fmt.Println("honeyelb version", versionStr)
+		fmt.Println("honeycloudtrail version", versionStr)
 		os.Exit(0)
 	}
 
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [ELB names...]
+		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [CloudTrail distribution IDs...]
 
 Use '`+os.Args[0]+` --help' to see available flags.`)
 		os.Exit(1)
 	}
 
-	if err := cmdELB(args); err != nil {
+	if err := cmdCloudTrail(args); err != nil {
 		fmt.Fprintln(os.Stderr, "Error: ", err)
 		os.Exit(1)
 	}
