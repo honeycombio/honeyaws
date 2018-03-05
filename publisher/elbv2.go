@@ -7,6 +7,7 @@ import (
   "os"
   "runtime"
   "strings"
+  "compress/gzip"
 
   "github.com/Sirupsen/logrus"
   dynsampler "github.com/honeycombio/dynsampler-go"
@@ -37,10 +38,10 @@ func NewELBv2EventParser(sampleRate int) *ELBv2EventParser {
 func (ep *ELBv2EventParser) ParseEvents(obj state.DownloadedObject, out chan<- event.Event) error {
   np := &nginx.Parser{}
   err := np.Init(&nginx.Options{
-    ConfigFile:      formatFileNameV2,
+    ConfigFile:      formatFileName,
     TimeFieldName:   "timestamp",
     TimeFieldFormat: "2006-01-02T15:04:05.9999Z",
-    LogFormatName:   AWSElasticLoadBalancerFormatV2,
+    LogFormatName:   AWSElasticLoadBalancerV2Format,
     NumParsers:      runtime.NumCPU(),
   })
   if err != nil {
@@ -50,6 +51,7 @@ func (ep *ELBv2EventParser) ParseEvents(obj state.DownloadedObject, out chan<- e
   linesCh := make(chan string)
 
   go np.ProcessLines(linesCh, out, nil)
+
   f, err := os.Open(obj.Filename)
   if err != nil {
     return err
@@ -57,7 +59,12 @@ func (ep *ELBv2EventParser) ParseEvents(obj state.DownloadedObject, out chan<- e
 
   defer f.Close()
 
-  scanner := bufio.NewScanner(f)
+  r, err := gzip.NewReader(f)
+  if err != nil {
+      return err
+  }
+
+  scanner := bufio.NewScanner(r)    
 
   for scanner.Scan() {
     line := scanner.Text()

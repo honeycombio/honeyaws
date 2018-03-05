@@ -114,7 +114,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
       for _, lbName := range lbNames {
         logrus.WithFields(logrus.Fields{
           "lbName": lbName,
-        }).Info("Attempting to ingest LB")
+        }).Info("Attempting to ingest ALB")
 
         elbSvc := elbv2.New(sess, nil)
 
@@ -167,8 +167,8 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
           "lbName": lbName,
         }).Info("Access logs are enabled for ALB ♥")
 
-        elbDownloader := logbucket.NewELBDownloader(sess, bucketName, bucketPrefix, lbName, "alb")
-        downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
+        albDownloader := logbucket.NewELBDownloader(sess, bucketName, bucketPrefix, lbName, "alb")
+        downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
 
         // TODO: One-goroutine-per-LB feels a bit
         // silly.

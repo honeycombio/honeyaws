@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
-	"compress/gzip"
+
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,6 +21,8 @@ const (
 	AWSApplicationLoadBalancing = "elasticloadbalancingv2"
 	AWSCloudFront               = "cloudfront"
 	AWSCloudTrail               = "cloudtrail"
+	alb                         = "alb"
+	elb                         = "elb"
 )
 
 type ObjectDownloader interface {
@@ -112,9 +114,9 @@ func (d *ELBDownloader) ObjectPrefix(day time.Time) string {
 	
 	var urlModifier string
 	
-	if d.LBType == "alb" {
+	if d.LBType == alb {
 		urlModifier = "_app."
-	} else if d.LBType == "elb" {
+	} else if d.LBType == elb {
 		urlModifier = "_"
 	} else {
 		fmt.Errorf("Unsupported load balancer type")
@@ -160,53 +162,10 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 		"file":   f.Name(),
 		"entity": d.String(),
 	}).Info("Successfully downloaded object")
-	
-	// TODO: replace ioutil.ReadFile with a peeker
-	contents, err := ioutil.ReadFile(f.Name())	
-	if contents[0] == 31 && contents[1] == 139 {
 
-			gzipped, err := ioutil.TempFile("", "hc-entity-ingest-unzipped")
-
-			g, err := os.Open(f.Name())
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			gzf, err := gzip.NewReader(g)
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			s, err := ioutil.ReadAll(gzf)
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			_, err = gzipped.Write(s)
-
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-
-			defer g.Close()
-			defer gzf.Close()
-
-			d.DownloadedObjects <- state.DownloadedObject{
-			Filename: gzipped.Name(),
-			Object:   *obj.Key,
-		}
-	} else {
-		d.DownloadedObjects <- state.DownloadedObject{
+	d.DownloadedObjects <- state.DownloadedObject{
 			Filename: f.Name(),
 			Object:   *obj.Key,
-		}
 	}
 
 	return nil
