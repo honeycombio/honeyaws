@@ -48,13 +48,25 @@ type DynamoDBStater struct {
 	BackfillInterval time.Duration
 }
 
-func NewDynamoDBStater(session *session.Session, service string, backfillHrs int) *DynamoDBStater {
-
-	return &DynamoDBStater{
+func NewDynamoDBStater(session *session.Session, service string, backfillHrs int) (*DynamoDBStater, error) {
+	stater := &DynamoDBStater{
 		Session:          session,
 		Service:          service,
 		BackfillInterval: time.Hour * time.Duration(backfillHrs),
 	}
+
+	svc := dynamodb.New(session)
+	input := &dynamodb.DescribeTableInput{
+		TableName: aws.String(DynamoTableName),
+	}
+	_, err := svc.DescribeTable(input)
+	if err != nil {
+		// For some reason, we cannot write to
+		// the table or access it
+		return stater, err
+	}
+
+	return stater, nil
 }
 
 // Used for unmarshaling and adding objects to DynamoDB

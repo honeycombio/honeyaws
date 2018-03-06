@@ -145,6 +145,7 @@ func dropNegativeTimes(ev *event.Event) {
 			}
 			if tFloat < 0 {
 				delete(ev.Data, f)
+				ev.Data["error"] = f + " was -1 -- upstream server timed out, disconnected, or sent malformed response"
 			}
 		}
 	}

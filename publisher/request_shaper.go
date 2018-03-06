@@ -44,5 +44,8 @@ func (rs *requestShaper) Shape(field string, ev *event.Event) {
 		if res.QueryShape != "" {
 			ev.Data[field+"_queryshape"] = res.QueryShape
 		}
+		for k, v := range res.PathFields {
+			ev.Data[field+"_path_"+k] = v[0]
+		}
 	}
 }
