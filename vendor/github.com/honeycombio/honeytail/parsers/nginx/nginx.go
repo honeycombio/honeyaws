@@ -2,6 +2,8 @@
 package nginx
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -38,10 +40,14 @@ type Parser struct {
 func (n *Parser) Init(options interface{}) error {
 	n.conf = *options.(*Options)
 
+	if n.conf.ConfigFile == "" {
+		return errors.New("missing required option --nginx.conf=<path to your Nginx config file>")
+	}
+
 	// Verify we've got our config, find our format
-	nginxConfig, err := os.Open(string(n.conf.ConfigFile))
+	nginxConfig, err := os.Open(n.conf.ConfigFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't open Nginx config file %s: %v", n.conf.ConfigFile, err)
 	}
 	defer nginxConfig.Close()
 	// get the nginx log format from the config file
@@ -66,6 +72,7 @@ func (g *GonxLineParser) ParseLine(line string) (map[string]interface{}, error) 
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"logline": line,
+			"error":   err,
 		}).Debug("failed to parse nginx log line")
 		return nil, err
 	}
@@ -79,6 +86,7 @@ func (n *Parser) ProcessLines(lines <-chan string, send chan<- event.Event, pref
 		wg.Add(1)
 		go func() {
 			for line := range lines {
+				line = strings.TrimSpace(line)
 				logrus.WithFields(logrus.Fields{
 					"line": line,
 				}).Debug("Attempting to process nginx log line")
