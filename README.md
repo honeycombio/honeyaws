@@ -9,6 +9,7 @@ events for later querying and debugging.
 - `honeycloudfront` - A tool for ingesting CloudFront access logs.
   ([docs](https://honeycomb.io/docs/connect/aws-cloudfront/))
 - `honeycloudtrail` - A tool for ingesting CloudTrail logs
+- `honeysqs` - A tool for ingesting events through SQS/SNS
 
 The Honeycomb AWS Bundle is currently considered in beta. It is OK to use, but
 may have occasional rough edges or bugs.
