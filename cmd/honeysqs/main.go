@@ -22,9 +22,59 @@ type options struct {
 	SampleRate int    `short:"s" long:"samplerate" description:"Honeycomb sample rate" default:"1"`
 }
 
+type eventMetadata struct {
+	messageID     string
+	receiptHandle string
+}
+
 var opt options
 var parser = flags.NewParser(&opt, flags.Default)
 var usage = "Honeycomb adapter for SQS events."
+
+// responseHandler watches the libhoney responses channel and deletes sqs
+// messages that have successfully been ingested into honeycomb
+func responseHandler(session *session.Session) {
+	responses := libhoney.Responses()
+
+	svc := aws_sqs.New(session)
+
+	// batched deletes may be nice here in the future. This isn't really
+	// written with high throughput SQS queues in mind
+	for {
+		response, more := <-responses
+		// libhoney should close this channel when Close() is called
+		if !more {
+			return
+		}
+
+		metadata, ok := response.Metadata.(*eventMetadata)
+		if !ok {
+			log.Error("got unexpected type in event metadata")
+			continue
+		}
+		if response.Err != nil {
+			log.WithError(response.Err).
+				WithField("MessageId", metadata.messageID).
+				Warn("failed to submit event for sqs message")
+			continue
+		}
+		// Note that it is possible for deletion to fail because the
+		// receiptHandle is no longer valid. This could happen if it takes
+		// longer than VisibilityTimeout (60s right now) for the message
+		// to make it through the response queue
+		// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_DeleteMessage.html
+		_, err := svc.DeleteMessage(&aws_sqs.DeleteMessageInput{
+			QueueUrl:      &opt.SNSQueue,
+			ReceiptHandle: &metadata.receiptHandle,
+		})
+		if err != nil {
+			log.WithError(err).
+				WithField("MessageId", metadata.messageID).
+				Warn("sqs deletion failed for message")
+			continue
+		}
+	}
+}
 
 func main() {
 	parser.Usage = usage
@@ -41,11 +91,13 @@ func main() {
 	})
 	defer libhoney.Close()
 
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
+	session := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	svc := aws_sqs.New(sess)
+	svc := aws_sqs.New(session)
+
+	go responseHandler(session)
 
 	for {
 		result, err := svc.ReceiveMessage(&aws_sqs.ReceiveMessageInput{
@@ -92,20 +144,22 @@ func main() {
 			}
 			event := libhoney.NewEvent()
 			event.Add(translatedEvent)
+			// pass the sqs receipt handle in the event metadata,
+			// so that we can delete the message upon successful event
+			// submission
+			event.Metadata = &eventMetadata{
+				receiptHandle: *message.ReceiptHandle,
+				messageID:     *message.MessageId,
+			}
 			err = event.Send()
-			// if we sent the event to honeycomb, we can delete it from the queue
-			if err == nil {
-				_, err = svc.DeleteMessage(&aws_sqs.DeleteMessageInput{
-					QueueUrl:      &opt.SNSQueue,
-					ReceiptHandle: message.ReceiptHandle,
-				})
-
-				if err != nil {
-					log.WithError(err).
-						WithField("MessageId", *message.MessageId).
-						Error("sqs deletion failed for message")
-					continue
-				}
+			// if we fail to enqueue the message, just move on.
+			// We will eventually pick up the message from SQS again when it
+			// becomes visible
+			if err != nil {
+				log.WithError(err).
+					WithField("MessageId", *message.MessageId).
+					Warn("failed to enqueue message to honeycomb")
+				continue
 			}
 
 			log.WithField("MessageId", *message.MessageId).
