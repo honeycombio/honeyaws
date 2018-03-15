@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	aws_sqs "github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/honeycombio/honeyaws/sqs"
+	"github.com/honeycombio/honeyaws/inputs/sqs"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flags "github.com/jessevdk/go-flags"
 )
