@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,6 +21,8 @@ const (
 	AWSApplicationLoadBalancing = "elasticloadbalancingv2"
 	AWSCloudFront               = "cloudfront"
 	AWSCloudTrail               = "cloudtrail"
+	alb                         = "alb"
+	elb                         = "elb"
 )
 
 type ObjectDownloader interface {
@@ -56,7 +59,7 @@ func NewDownloader(sess *session.Session, stater state.Stater, downloader Object
 }
 
 type ELBDownloader struct {
-	Prefix, BucketName, AccountID, Region, LBName string
+	Prefix, BucketName, AccountID, Region, LBName, LBType string
 }
 
 type CloudFrontDownloader struct {
@@ -123,7 +126,9 @@ func (d *CloudFrontDownloader) String() string {
 func (d *CloudFrontDownloader) Bucket() string {
 	return d.BucketName
 }
-func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string) *ELBDownloader {
+
+func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string, lbType string) *ELBDownloader {
+  
 	metadata := meta.Data(sess)
 
 	// If the user specified a prefix for the access logs in the bucket,
@@ -138,14 +143,26 @@ func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 		BucketName: bucketName,
 		Prefix:     bucketPrefix,
 		LBName:     lbName,
+		LBType:     lbType,
 	}
 }
 
 // pass in time.Now().UTC()
 func (d *ELBDownloader) ObjectPrefix(day time.Time) string {
+	
+	var urlModifier string
+	
+	if d.LBType == alb {
+		urlModifier = "_app."
+	} else if d.LBType == elb {
+		urlModifier = "_"
+	} else {
+		fmt.Errorf("Unsupported load balancer type")
+	}
+
 	dayPath := day.Format("/2006/01/02")
 	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + AWSElasticLoadBalancing + "/" + d.Region + dayPath +
-		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + "_" + d.LBName
+		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + urlModifier + d.LBName
 }
 
 func (d *ELBDownloader) String() string {
@@ -178,7 +195,6 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 	if err != nil {
 		return fmt.Errorf("Error downloading object file: %s", err)
 	}
-
 	logrus.WithFields(logrus.Fields{
 		"bytes":  nBytes,
 		"file":   f.Name(),
@@ -186,8 +202,8 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 	}).Info("Successfully downloaded object")
 
 	d.DownloadedObjects <- state.DownloadedObject{
-		Filename: f.Name(),
-		Object:   *obj.Key,
+			Filename: f.Name(),
+			Object:   *obj.Key,
 	}
 
 	return nil

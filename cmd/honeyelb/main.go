@@ -131,7 +131,7 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 					"lbName": lbName,
 				}).Info("Access logs are enabled for ELB ♥")
 
-				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
+				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName, "elb")
 				downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
 
 				// TODO: One-goroutine-per-LB feels a bit
