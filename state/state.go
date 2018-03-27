@@ -44,14 +44,12 @@ type DownloadedObject struct {
 
 type DynamoDBStater struct {
 	Session          *session.Session
-	Service          string
 	BackfillInterval time.Duration
 }
 
-func NewDynamoDBStater(session *session.Session, service string, backfillHrs int) (*DynamoDBStater, error) {
+func NewDynamoDBStater(session *session.Session, backfillHrs int) (*DynamoDBStater, error) {
 	stater := &DynamoDBStater{
 		Session:          session,
-		Service:          service,
 		BackfillInterval: time.Hour * time.Duration(backfillHrs),
 	}
 

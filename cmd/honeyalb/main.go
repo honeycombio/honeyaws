@@ -9,7 +9,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/honeycombio/honeyaws/logbucket"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/publisher"
@@ -44,9 +44,9 @@ func cmdELB(args []string) error {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	elbSvc := elb.New(sess, nil)
+	elbSvc := elbv2.New(sess, nil)
 
-	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elb.DescribeLoadBalancersInput{})
+	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{})
 	if err != nil {
 		return err
 		os.Exit(1)
@@ -55,7 +55,7 @@ func cmdELB(args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "ls", "list":
-			for _, lb := range describeLBResp.LoadBalancerDescriptions {
+			for _, lb := range describeLBResp.LoadBalancers {
 				fmt.Println(*lb.LoadBalancerName)
 			}
 
@@ -72,7 +72,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			// Use all available load balancers by default if none
 			// are provided.
 			if len(lbNames) == 0 {
-				for _, lb := range describeLBResp.LoadBalancerDescriptions {
+				for _, lb := range describeLBResp.LoadBalancers {
 					lbNames = append(lbNames, *lb.LoadBalancerName)
 				}
 			}
@@ -88,37 +88,63 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				if err != nil {
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
 				}
-				logrus.Info("High availability enabled - using DynamoDB")
-
+				logrus.Info("State tracking with high availability enabled - using DynamoDB")
 			} else {
-				stater = state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancing, opt.BackfillHr)
+				stater = state.NewFileStater(opt.StateDir, logbucket.AWSElasticLoadBalancingV2, opt.BackfillHr)
 				logrus.Info("State tracking enabled - using local file system.")
 			}
 			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
 
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewELBEventParser(opt.SampleRate))
+			// TODO: Switch either publisher or parser?
+			// TODO: REMOVE
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewALBEventParser(opt.SampleRate))
 			downloadsCh := make(chan state.DownloadedObject)
 
 			// For now, just run one goroutine per-LB
 			for _, lbName := range lbNames {
 				logrus.WithFields(logrus.Fields{
 					"lbName": lbName,
-				}).Info("Attempting to ingest LB")
+				}).Info("Attempting to ingest ALB")
 
-				elbSvc := elb.New(sess, nil)
+				elbSvc := elbv2.New(sess, nil)
 
-				lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elb.DescribeLoadBalancerAttributesInput{
-					LoadBalancerName: aws.String(lbName),
+				lbNameResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
+					Names: []*string{
+						aws.String(lbName),
+					},
 				})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
 
-				accessLog := lbResp.LoadBalancerAttributes.AccessLog
+				lbArn := lbNameResp.LoadBalancers[0].LoadBalancerArn
+				lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
+					LoadBalancerArn: lbArn,
+				})
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
 
-				if !*accessLog.Enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ELB %q. Please enable them to use the ingest tool.
+				enabled := false
+				bucketName := ""
+				bucketPrefix := ""
+
+				for _, element := range lbArnResp.Attributes {
+					if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
+						enabled = true
+					}
+					if *element.Key == "access_logs.s3.bucket" {
+						bucketName = *element.Value
+					}
+					if *element.Key == "access_logs.s3.prefix" {
+						bucketPrefix = *element.Value
+					}
+				}
+
+				if !enabled {
+					fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
 
 For reference see this link:
 
@@ -127,12 +153,12 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 					os.Exit(1)
 				}
 				logrus.WithFields(logrus.Fields{
-					"bucket": *accessLog.S3BucketName,
+					"bucket": bucketName,
 					"lbName": lbName,
-				}).Info("Access logs are enabled for ELB ♥")
+				}).Info("Access logs are enabled for ALB ♥")
 
-				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
+				albDownloader := logbucket.NewALBDownloader(sess, bucketName, bucketPrefix, lbName)
+				downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
 
 				// TODO: One-goroutine-per-LB feels a bit
 				// silly.
@@ -145,15 +171,6 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			go func() {
 				<-signalCh
 				logrus.Fatal("Exiting due to interrupt.")
-				// TODO(nathanleclaire): Cleanup before
-				// exiting.
-				//
-				// 1. Delete format file, even
-				//    though it's in /tmp.
-				// 2. Also, wait for existing in-flight object
-				//    parsing / sending to finish so that state of
-				//    parsing "cursor" can be written to the JSON
-				//    file.
 			}()
 
 			for {
@@ -200,7 +217,7 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [ELB names...]
+		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [ALB names...]
 
 Use '`+os.Args[0]+` --help' to see available flags.`)
 		os.Exit(1)

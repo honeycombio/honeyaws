@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	AWSElasticLoadBalancerV2Format = "aws_elbv2"
-	AWSElasticLoadBalancerFormat = "aws_elb"
-	AWSCloudFrontWebFormat       = "aws_cf_web"
+	AWSApplicationLoadBalancerFormat = "aws_alb"
+	AWSElasticLoadBalancerFormat     = "aws_elb"
+	AWSCloudFrontWebFormat           = "aws_cf_web"
 )
 
 var (
@@ -27,14 +27,14 @@ var (
 	//
 	// Example ALB log format (aws_elbv2):
 	// http 2018-02-18T03:03:10.432026Z app/alb-test-2/ebd66bfd69677bfa 142.44.241.206:60000 172.31.21.134:80 0.001 0.001 0.000 200 200 70 248 "GET http://alb-test-2-265992175.us-east-1.elb.amazonaws.com:80/ HTTP/1.0" "https://getroot.sh survey" - - arn:aws:elasticloadbalancing:us-east-1:729997878290:targetgroup/ec2instances/3bf8bbb3ab2b6080 "Root=1-5a88eced-40876ce050d010360bfb23bd" "-" "-"
-  //
+	//
 	// Example CloudFront log format (aws_cf_web):
 	// 2014-05-23 01:13:11 FRA2 182 192.0.2.10 GET d111111abcdef8.cloudfront.net /view/my/file.html 200 www.displaymyfiles.com Mozilla/4.0%20(compatible;%20MSIE%205.0b1;%20Mac_PowerPC) - zip=98101 RefreshHit MRVMF7KydIvxMWfJIglgwHQwZsbG2IhRJ07sn9AkKUFSHS9EXAMPLE== d111111abcdef8.cloudfront.net http - 0.001 - - - RefreshHit HTTP/1.1
 
 	// TODO: update $unknown field once ALB documentation is updated
 	logFormat = []byte(fmt.Sprintf(`log_format %s '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';
 log_format %s '$timestamp $x_edge_location $sc_bytes $c_ip $cs_method $cs_host $cs_uri_stem $sc_status $cs_referer $cs_user_agent $cs_uri_query $cs_cookie $x_edge_result_type $x_edge_request_id $x_host_header $cs_protocol $cs_bytes $time_taken $x_forwarded_for $ssl_protocol $ssl_cipher $x_edge_response_result_type $cs_protocol_version';
-log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" $domain_name $chosen_cert_arn $unknown';`, AWSElasticLoadBalancerFormat, AWSCloudFrontWebFormat, AWSElasticLoadBalancerV2Format))
+log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" $domain_name $chosen_cert_arn $unknown';`, AWSElasticLoadBalancerFormat, AWSCloudFrontWebFormat, AWSApplicationLoadBalancerFormat))
 	libhoneyInitialized = false
 	formatFileName      string
 )
