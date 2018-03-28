@@ -95,7 +95,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			if opt.HighAvail {
-				stater, err = state.NewDynamoDBStater(sess, logbucket.AWSCloudTrail, opt.BackfillHr)
+				stater, err = state.NewDynamoDBStater(sess, opt.BackfillHr)
 				if err != nil {
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
 				}
