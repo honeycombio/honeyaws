@@ -33,10 +33,10 @@ func init() {
 	}
 
 	// init libhoney user agent properly
-	libhoney.UserAgentAddition = "honeyelb/" + versionStr
+	libhoney.UserAgentAddition = "honeyalb/" + versionStr
 }
 
-func cmdELB(args []string) error {
+func cmdALB(args []string) error {
 	// TODO: Would be nice to have this more highly configurable.
 	//
 	// Will just use environment config right now, e.g., default profile.
@@ -95,8 +95,6 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
 
-			// TODO: Switch either publisher or parser?
-			// TODO: REMOVE
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewALBEventParser(opt.SampleRate))
 			downloadsCh := make(chan state.DownloadedObject)
 
@@ -212,7 +210,7 @@ func main() {
 	}
 
 	if opt.Version {
-		fmt.Println("honeyelb version", versionStr)
+		fmt.Println("honeyalb version", versionStr)
 		os.Exit(0)
 	}
 
@@ -223,7 +221,7 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 		os.Exit(1)
 	}
 
-	if err := cmdELB(args); err != nil {
+	if err := cmdALB(args); err != nil {
 		fmt.Fprintln(os.Stderr, "Error: ", err)
 		os.Exit(1)
 	}

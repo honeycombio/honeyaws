@@ -3,7 +3,6 @@ package publisher
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"time"
 
@@ -139,7 +138,6 @@ func dropNegativeTimes(ev *event.Event) {
 			switch t.(type) {
 			case int64:
 				tFloat = float64(t.(int64))
-				log.Print(tFloat)
 			case float64:
 				tFloat = t.(float64)
 			}
