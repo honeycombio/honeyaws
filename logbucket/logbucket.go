@@ -151,7 +151,7 @@ func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 func (d *ELBDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("/2006/01/02")
 	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + AWSElasticLoadBalancing + "/" + d.Region + dayPath +
-		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + d.LBName
+		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + "-" + d.LBName
 }
 
 func (d *ELBDownloader) String() string {
