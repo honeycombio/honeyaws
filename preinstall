@@ -29,3 +29,5 @@ fi
 usermod -a -G adm honeycomb
 install -d -o honeycomb -g honeycomb /var/lib/honeyelb
 install -d -o honeycomb -g honeycomb /var/lib/honeycloudformation
+install -d -o honeycomb -g honeycomb /var/lib/honeycloudtrail
+install -d -o honeycomb -g honeycomb /var/lib/honeyalb

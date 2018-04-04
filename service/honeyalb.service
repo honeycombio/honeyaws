@@ -1,0 +1,13 @@
+[Unit]
+Description=Honeycomb ALB Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/honeyalb --statedir /var/lib/honeyalb ingest
+KillMode=process
+Restart=on-failure
+User=honeycomb
+Group=honeycomb
+
+[Install]
+Alias=honeyalb honeyalb.service

@@ -1,0 +1,12 @@
+# Upstart job for honeycloudtrail
+# https://honeycomb.io/
+
+description     "Honeycomb CloudTrail Daemon"
+author          "Susan Lunn <susan@honeycomb.io>"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+
+exec su -s /bin/sh -c 'exec "$0" "$@"' honeycomb -- /usr/bin/honeycloudtrail --statedir /var/lib/honeycloudtrail ingest
