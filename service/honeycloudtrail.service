@@ -1,0 +1,13 @@
+[Unit]
+Description=Honeycomb CloudTrail Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/honeycloudtrail --statedir /var/lib/honeycloudtrail ingest
+KillMode=process
+Restart=on-failure
+User=honeycomb
+Group=honeycomb
+
+[Install]
+Alias=honeycloudtrail honeycloudtrail.service

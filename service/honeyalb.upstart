@@ -1,0 +1,12 @@
+# Upstart job for honeyalb
+# https://honeycomb.io/
+
+description     "HoneyALB Daemon"
+author          "Nathan LeClaire <nathan@honeycomb.io>"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+
+exec su -s /bin/sh -c 'exec "$0" "$@"' honeycomb -- /usr/bin/honeyalb --statedir /var/lib/honeyalb ingest
