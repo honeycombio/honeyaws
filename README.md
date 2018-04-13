@@ -92,7 +92,7 @@ Now you can have multiple EC2 instances ingesting logs!
 
 Sampling is a great way to send fewer events (thereby keeping more history and
 reducing costs) while still preserving most relevant information. To set a
-sample rate while using one of the Honeycomb AWS tools, use the `--sample-rate`
+sample rate while using one of the Honeycomb AWS tools, use the `--samplerate`
 flag. While the tools run, this base rate will be automatically adjusted by the
 Honeycomb AWS tools using dynamic sampling to keep more interesting traffic at a
 higher rate.
@@ -102,7 +102,7 @@ processed to Honeycomb by default. Fields such as `elb_status_code` are used to
 lower this ratio for rarer, but relevant, events such as HTTP 500-level errors.
 
 ```
-$ honeyelb --sample-rate 20 ...  ingest ...
+$ honeyelb --samplerate 20 ...  ingest ...
 ```
 
 ## Contributions
