@@ -24,16 +24,10 @@ Resources:
         -
           AttributeName: "S3Object"
           AttributeType: "S"
-        - 
-          AttributeName: "Time"
-          AttributeType: "S"
       KeySchema:
         -
           AttributeName: "S3Object"
           KeyType: "HASH"
-        -
-          AttributeName: "Time"
-          KeyType: "RANGE"
       ProvisionedThroughput:
         ReadCapacityUnits:
           Ref: "DynamoReadCapacityUnits"
