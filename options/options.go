@@ -1,9 +1,9 @@
 package options
 
 type Options struct {
-	Dataset    string `long:"dataset" description:"Name of the dataset" default:"aws-$SERVICE-access"`
+	Dataset    string `short:"d" long:"dataset" description:"Name of the dataset" default:"aws-$SERVICE-access"`
 	SampleRate int    `long:"samplerate" description:"Only send 1 / N log lines" default:"1"`
-	WriteKey   string `long:"writekey" description:"Honeycomb team write key"`
+	WriteKey   string `short:"k" long:"writekey" description:"Honeycomb team write key"`
 	StateDir   string `long:"statedir" description:"Directory where ingest state is stored" default:"."`
 
 	Version bool   `short:"V" long:"version" description:"Show version"`
