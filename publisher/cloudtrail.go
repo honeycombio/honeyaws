@@ -33,15 +33,16 @@ type CloudTrailRecords struct {
 }
 
 type CloudTrailRecord struct {
-	UserIdentity    CloudTrailUserIdentity `json:userIdentity`
-	EventTime       string                 `json:eventTime`
-	EventSource     string                 `json:eventSource`
-	EventName       string                 `json:eventName`
-	AwsRegion       string                 `json:awsRegion`
-	SourceIPAddress string                 `json:sourceIPAddress`
-	UserAgent       string                 `json:userAgent`
-	Resources       []CloudTrailResource   `json:resources`
-	EventType       string                 `json:eventType`
+	UserIdentity      CloudTrailUserIdentity `json:"userIdentity"`
+	EventTime         string                 `json:"eventTime"`
+	EventSource       string                 `json:"eventSource"`
+	EventName         string                 `json:"eventName"`
+	AwsRegion         string                 `json:"awsRegion"`
+	SourceIPAddress   string                 `json:"sourceIPAddress"`
+	UserAgent         string                 `json:"userAgent"`
+	Resources         []CloudTrailResource   `json:"resources"`
+	EventType         string                 `json:"eventType"`
+	RequestParameters map[string]interface{} `json:"requestParameters"`
 }
 
 type CloudTrailEventParser struct {
@@ -65,6 +66,7 @@ func flattenCloudTrailRecord(r *CloudTrailRecord) map[string]interface{} {
 	p["SourceIPAddress"] = r.SourceIPAddress
 	p["UserAgent"] = r.UserAgent
 	p["EventType"] = r.EventType
+	p["Parameters"] = r.RequestParameters
 
 	return p
 }
