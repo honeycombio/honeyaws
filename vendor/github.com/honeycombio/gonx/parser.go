@@ -28,7 +28,7 @@ func NewParser(format string) *Parser {
 	sanitizedFormat = strings.Replace(sanitizedFormat, "\\.", ".", -1)
 	re := regexp.MustCompile(`\\\$([A-Za-z0-9_]+)(\\?(.))`).ReplaceAllString(
 		sanitizedFormat, "(?P<$1>[^$3]*)$2")
-	return &Parser{format, regexp.MustCompile(fmt.Sprintf("^%v$", strings.Trim(re, " ")))}
+	return &Parser{format, regexp.MustCompile(fmt.Sprintf("^%v.*$", strings.Trim(re, " ")))}
 }
 
 // Parse log file line using internal format regexp. If line do not match

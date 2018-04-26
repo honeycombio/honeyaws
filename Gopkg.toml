@@ -29,6 +29,10 @@
   name = "github.com/Sirupsen/logrus"
   version = "1.0.3"
 
+[[override]]
+  branch = "master"
+  name = "github.com/honeycombio/gonx"
+
 [[constraint]]
   branch = "master"
   name = "github.com/honeycombio/urlshaper"

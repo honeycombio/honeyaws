@@ -40,6 +40,7 @@
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
     "service/elb",
+    "service/elbv2",
     "service/s3",
     "service/s3/s3iface",
     "service/s3/s3manager",
@@ -76,9 +77,10 @@
   revision = "c043ccf54256cf62f57b21d37306a8d482e97d54"
 
 [[projects]]
+  branch = "master"
   name = "github.com/honeycombio/gonx"
   packages = ["."]
-  revision = "dc1c4fe6e0cc63c38a537b78f9ddaa60e168b957"
+  revision = "7443e4e8f28c532499bc468e5089341f3094ecea"
 
 [[projects]]
   branch = "master"
@@ -135,6 +137,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "911c01cf99451ac0e3f7e81f6891fa12faa4800d732399b0ff7d9fdd61b0b70b"
+  inputs-digest = "ffe6c6d6b531dc96940150f3069d4aa57a6c028b47173731ff9d984dee07fa77"
   solver-name = "gps-cdcl"
   solver-version = 1
