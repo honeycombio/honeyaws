@@ -50,7 +50,6 @@ func cmdCloudFront(args []string) error {
 	listDistributionsResp, err := cloudfrontSvc.ListDistributions(&cloudfront.ListDistributionsInput{})
 	if err != nil {
 		return err
-		os.Exit(1)
 	}
 
 	if len(args) > 0 {

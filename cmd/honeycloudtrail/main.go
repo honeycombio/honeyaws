@@ -50,7 +50,6 @@ func cmdCloudTrail(args []string) error {
 
 	if err != nil {
 		return err
-		os.Exit(1)
 	}
 
 	if len(args) > 0 {
