@@ -26,6 +26,8 @@
     "aws/request",
     "aws/session",
     "aws/signer/v4",
+    "internal/sdkio",
+    "internal/sdkrand",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/json/jsonutil",
@@ -40,12 +42,14 @@
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
     "service/elb",
+    "service/elbv2",
     "service/s3",
     "service/s3/s3iface",
     "service/s3/s3manager",
     "service/sts"
   ]
-  revision = "a42816b7219102ae19ac57b8737af5fbe1f90afb"
+  revision = "64aa9485bf77b8a811e88e95060a4a049bb373fb"
+  version = "v1.13.37"
 
 [[projects]]
   branch = "master"
@@ -68,7 +72,8 @@
 [[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
-  revision = "c787282c39ac1fc618827141a1f762240def08a3"
+  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
+  version = "v1.36.0"
 
 [[projects]]
   name = "github.com/honeycombio/dynsampler-go"
@@ -76,9 +81,10 @@
   revision = "c043ccf54256cf62f57b21d37306a8d482e97d54"
 
 [[projects]]
+  branch = "master"
   name = "github.com/honeycombio/gonx"
   packages = ["."]
-  revision = "dc1c4fe6e0cc63c38a537b78f9ddaa60e168b957"
+  revision = "7443e4e8f28c532499bc468e5089341f3094ecea"
 
 [[projects]]
   branch = "master"
@@ -111,7 +117,7 @@
 [[projects]]
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
-  revision = "bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d"
+  revision = "0b12d6b5"
 
 [[projects]]
   name = "golang.org/x/crypto"
@@ -135,6 +141,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "911c01cf99451ac0e3f7e81f6891fa12faa4800d732399b0ff7d9fdd61b0b70b"
+  inputs-digest = "0360319ff7ecf75d7033cc23c503d5290164c33eeeb71abde7503404d9a6a0c6"
   solver-name = "gps-cdcl"
   solver-version = 1
