@@ -174,7 +174,10 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			for {
 				download := <-downloadsCh
 				if err := defaultPublisher.Publish(download); err != nil {
-					logrus.WithField("object", download).Error("Cannot properly publish downloaded object")
+					logrus.WithFields(logrus.Fields{
+						"object": download,
+						"error":  err,
+					}).Error("Cannot properly publish downloaded object")
 				}
 			}
 		}
