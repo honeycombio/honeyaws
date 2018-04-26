@@ -118,7 +118,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				// we want to check if the field is null
 				if s3Bucket == nil {
 
-					fmt.Fprintf(os.Stderr, `%q does not currently have an S3 bucket that it is writing logs to. Please enable them to use the ingest tool. 
+					fmt.Fprintf(os.Stderr, `%q does not currently have an S3 bucket that it is writing logs to. Please enable them to use the ingest tool.
 
 For reference see this link:
 https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html `, *trail.Name)
@@ -150,7 +150,10 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 			for {
 				download := <-downloadsCh
 				if err := defaultPublisher.Publish(download); err != nil {
-					logrus.WithField("object", download).Error("Cannot properly publish downloaded object")
+					logrus.WithFields(logrus.Fields{
+						"object": download,
+						"error":  err,
+					}).Error("Cannot properly publish downloaded object")
 				}
 			}
 
