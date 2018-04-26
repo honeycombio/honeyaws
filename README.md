@@ -1,4 +1,4 @@
-## Honeycomb AWS Bundle
+## Honeycomb AWS Bundle [![Build Status](https://travis-ci.org/honeycombio/honeyaws.svg?branch=master)](https://travis-ci.org/honeycombio/honeyaws)
 
 `honeyaws` is a collection of programs to enable observability in your AWS
 infrastructure. They get information from AWS and publish it to Honeycomb as
@@ -67,7 +67,7 @@ for management of processed log files. There are a few things that must be
 set up before running `highavail`.
 
 First, a table must be created with the name `HoneyAWSAccessLogBuckets` with a
-primary key named `S3Object` and a sort key named `Time`. We also require that TTL be 
+primary key named `S3Object` and a sort key named `Time`. We also require that TTL be
 enabled (we don't want your table to grow infinitely!) with the attribute name
 `TTL`. The TTL for objects is 7 days.
 
