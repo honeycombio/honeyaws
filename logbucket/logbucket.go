@@ -234,6 +234,13 @@ func (d *Downloader) accessLogBucketPageCallback(processedObjects map[string]tim
 		}
 
 		if time.Since(*obj.LastModified) < d.BackfillInterval {
+			if err := d.SetProcessed(*obj.Key); err != nil {
+				logrus.Debug("Error setting state of object as processed: ", *obj.Key)
+				continue
+			}
+			// we want to set the object as processed as
+			// soon as it's ready to downloaded
+			// to avoid duplicates in downloading
 			d.ObjectsToDownload <- obj
 		}
 	}

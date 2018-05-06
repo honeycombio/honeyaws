@@ -188,10 +188,6 @@ func (hp *HoneycombPublisher) Publish(downloadedObj state.DownloadedObject) erro
 		return fmt.Errorf("Error cleaning up downloaded object %s: %s", downloadedObj.Filename, err)
 	}
 
-	if err := hp.Stater.SetProcessed(downloadedObj.Object); err != nil {
-		return fmt.Errorf("Error setting state of object as processed: %s", err)
-	}
-
 	return nil
 }
 
