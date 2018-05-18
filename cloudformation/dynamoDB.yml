@@ -4,17 +4,17 @@ Parameters:
   DynamoReadCapacityUnits:
     Description: "Provisioned read throughput"
     Type: "Number"
-    Default: "1"
+    Default: "10"
     MinValue: "1"
     MaxValue: "10000"
-    ConstraintDescription: "must be between 1 and 10000"
+    ConstraintDescription: "must be between 1 and 100000"
   DynamoWriteCapacityUnits:
     Description: "Provisioned read throughput"
     Type: "Number"
-    Default: "1"
+    Default: "10"
     MinValue: "1"
     MaxValue: "10000"
-    ConstraintDescription: "must be between 1 and 10000"
+    ConstraintDescription: "must be between 1 and 100000"
 Resources:
   HoneyAWSAccessLogBuckets:
     Type: "AWS::DynamoDB::Table"

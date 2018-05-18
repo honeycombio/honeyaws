@@ -145,7 +145,9 @@ func (d *DynamoDBStater) SetProcessed(s3object string) error {
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok {
 			// we want this to happen if object already exists
-			if awsErr.Code() != dynamodb.ErrCodeConditionalCheckFailedException {
+			if awsErr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
+				return fmt.Errorf("Item exists in Dynamo: %s", err)
+			} else {
 				return fmt.Errorf("PutItem failed: %s", err)
 			}
 
