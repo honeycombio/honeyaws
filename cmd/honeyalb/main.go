@@ -49,7 +49,6 @@ func cmdALB(args []string) error {
 	describeLBResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{})
 	if err != nil {
 		return err
-		os.Exit(1)
 	}
 
 	if len(args) > 0 {
