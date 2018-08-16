@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -79,7 +80,7 @@ func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, tr
 	// If the user specified a prefix for the access logs in the bucket,
 	// set "/" as the prefix (otherwise the leading/root slash will be
 	// mising).
-	if bucketPrefix != "" {
+	if bucketPrefix != "" && !strings.HasSuffix(bucketPrefix, "/") {
 		bucketPrefix += "/"
 	}
 
@@ -107,7 +108,7 @@ func (d *CloudTrailDownloader) Bucket() string {
 }
 
 func NewCloudFrontDownloader(bucketName, bucketPrefix, distID string) *CloudFrontDownloader {
-	if bucketPrefix != "" {
+	if bucketPrefix != "" && !strings.HasSuffix(bucketPrefix, "/") {
 		bucketPrefix += "/"
 	}
 	return &CloudFrontDownloader{
@@ -135,7 +136,7 @@ func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 	// If the user specified a prefix for the access logs in the bucket,
 	// set "/" as the prefix (otherwise the leading/root slash will be
 	// mising).
-	if bucketPrefix != "" {
+	if bucketPrefix != "" && !strings.HasSuffix(bucketPrefix, "/") {
 		bucketPrefix += "/"
 	}
 	return &ELBDownloader{
