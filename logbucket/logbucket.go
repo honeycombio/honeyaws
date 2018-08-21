@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -75,14 +76,6 @@ type CloudTrailDownloader struct {
 
 func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID string) *CloudTrailDownloader {
 	metadata := meta.Data(sess)
-
-	// If the user specified a prefix for the access logs in the bucket,
-	// set "/" as the prefix (otherwise the leading/root slash will be
-	// mising).
-	if bucketPrefix != "" {
-		bucketPrefix += "/"
-	}
-
 	return &CloudTrailDownloader{
 		AccountID:  metadata.AccountID,
 		Region:     metadata.Region,
@@ -95,7 +88,8 @@ func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, tr
 
 func (d *CloudTrailDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("2006/01/02")
-	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + "CloudTrail" + "/" + d.Region + "/" + dayPath + "/" + d.AccountID + "_CloudTrail_" + d.Region
+	return filepath.Join(d.Prefix, "AWSLogs", d.AccountID, "CloudTrail",
+		d.Region, dayPath, d.AccountID+"_CloudTrail_"+d.Region)
 }
 
 func (d *CloudTrailDownloader) String() string {
@@ -107,9 +101,6 @@ func (d *CloudTrailDownloader) Bucket() string {
 }
 
 func NewCloudFrontDownloader(bucketName, bucketPrefix, distID string) *CloudFrontDownloader {
-	if bucketPrefix != "" {
-		bucketPrefix += "/"
-	}
 	return &CloudFrontDownloader{
 		BucketName:     bucketName,
 		Prefix:         bucketPrefix,
@@ -119,7 +110,7 @@ func NewCloudFrontDownloader(bucketName, bucketPrefix, distID string) *CloudFron
 
 func (d *CloudFrontDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("2006-01-02")
-	return d.Prefix + d.DistributionID + "." + dayPath
+	return filepath.Join(d.Prefix, d.DistributionID+"."+dayPath)
 }
 
 func (d *CloudFrontDownloader) String() string {
@@ -131,13 +122,6 @@ func (d *CloudFrontDownloader) Bucket() string {
 }
 func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string) *ELBDownloader {
 	metadata := meta.Data(sess)
-
-	// If the user specified a prefix for the access logs in the bucket,
-	// set "/" as the prefix (otherwise the leading/root slash will be
-	// mising).
-	if bucketPrefix != "" {
-		bucketPrefix += "/"
-	}
 	return &ELBDownloader{
 		AccountID:  metadata.AccountID,
 		Region:     metadata.Region,
@@ -150,8 +134,8 @@ func NewELBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 // pass in time.Now().UTC()
 func (d *ELBDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("/2006/01/02")
-	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + AWSElasticLoadBalancing + "/" + d.Region + dayPath +
-		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + "_" + d.LBName
+	return filepath.Join(d.Prefix, "AWSLogs", d.AccountID, AWSElasticLoadBalancing, d.Region, dayPath,
+		d.AccountID+"_"+AWSElasticLoadBalancing+"_"+d.Region+"_"+d.LBName)
 }
 
 func (d *ELBDownloader) String() string {
@@ -168,8 +152,8 @@ func NewALBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName st
 
 func (d *ALBDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("/2006/01/02")
-	return d.Prefix + "AWSLogs/" + d.AccountID + "/" + AWSElasticLoadBalancing + "/" + d.Region + dayPath +
-		"/" + d.AccountID + "_" + AWSElasticLoadBalancing + "_" + d.Region + "_app." + d.LBName
+	return filepath.Join(d.Prefix, "AWSLogs/", d.AccountID, AWSElasticLoadBalancing, d.Region+dayPath,
+		d.AccountID+"_"+AWSElasticLoadBalancing+"_"+d.Region+"_app."+d.LBName)
 }
 
 func (d *Downloader) downloadObject(obj *s3.Object) error {
