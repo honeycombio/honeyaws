@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -149,6 +150,46 @@ func dropNegativeTimes(ev *event.Event) {
 	}
 }
 
+// parse the included X-Amzn-Trace-Id header if it is present in an ALB access
+// log - see
+// https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
+// for reference
+func addTraceData(ev *event.Event) {
+	amznTraceID, ok := ev.Data["trace_id"].(string)
+	if !ok {
+		return
+	}
+	fields := strings.Split(amznTraceID, ";")
+	rootSpan := true
+	for _, field := range fields {
+		kv := strings.Split(field, "=")
+		key := kv[0]
+		val := kv[1]
+		switch key {
+		case "Root":
+			versionTimeID := strings.Split(val, "-")
+			ev.Data["traceId"] = versionTimeID[2]
+		case "Self":
+			versionTimeID := strings.Split(val, "-")
+			ev.Data["id"] = versionTimeID[2]
+			rootSpan = false
+		case "Parent":
+			ev.Data["parentId"] = val
+			rootSpan = false
+		case "Sampled":
+			ev.Data["sampled"] = val
+		default:
+			ev.Data[key] = val
+		}
+	}
+	if rootSpan {
+		ev.Data["id"] = ev.Data["traceId"].(string)
+	}
+	ev.Data["durationMs"] = ev.Data["request_processing_time"].(float64)
+	ev.Data["serviceName"] = ev.Data["elb"].(string)
+	ev.Data["name"] = ev.Data["request_path"].(string)
+}
+
 func sendEventsToHoneycomb(in <-chan event.Event) {
 	shaper := requestShaper{&urlshaper.Parser{}}
 	for ev := range in {
@@ -157,6 +198,7 @@ func sendEventsToHoneycomb(in <-chan event.Event) {
 		libhEv.Timestamp = ev.Timestamp
 		libhEv.SampleRate = uint(ev.SampleRate)
 		dropNegativeTimes(&ev)
+		addTraceData(&ev)
 		if err := libhEv.Add(ev.Data); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"event": ev,
