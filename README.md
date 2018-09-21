@@ -1,8 +1,8 @@
 ## Honeycomb AWS Bundle [![Build Status](https://travis-ci.org/honeycombio/honeyaws.svg?branch=master)](https://travis-ci.org/honeycombio/honeyaws)
 
-`honeyaws` is a collection of programs to enable observability in your AWS
-infrastructure. They get information from AWS and publish it to Honeycomb as
-events for later querying and debugging.
+`honeyaws` is a collection of programs to send events from your AWS
+infrastructure into [Honeycomb](https://www.honeycomb.io/), a service
+for debugging your software in production.
 
 - `honeyelb` - A tool for ingesting Elastic Load Balancer access logs.
   ([docs](https://honeycomb.io/docs/connect/aws-elastic-load-balancer))
@@ -13,6 +13,8 @@ events for later querying and debugging.
 
 The Honeycomb AWS Bundle is currently considered in beta. It is OK to use, but
 may have occasional rough edges or bugs.
+
+[Usage & Examples](https://docs.honeycomb.io/getting-data-in/integrations/aws/aws-elastic-load-balancer/)
 
 ## Install
 
