@@ -24,14 +24,14 @@ func TestParseTraceData(t *testing.T) {
 			},
 			expected: map[string]interface{}{
 				// old fields
-				"trace_id":                "Root=1-5759e988-bd862e3fe1be46a994272793;Parent=53995c3f42cd8ad8;Self=1-67891234-12456789abcdef012345678;Sampled=1",
+				"raw_trace_id":            "Root=1-5759e988-bd862e3fe1be46a994272793;Parent=53995c3f42cd8ad8;Self=1-67891234-12456789abcdef012345678;Sampled=1",
 				"request_processing_time": 1.12,
 				"elb":          "fooservice",
 				"request_path": "/down/stream",
 
-				"traceId":     "bd862e3fe1be46a994272793",
+				"trace_id":    "bd862e3fe1be46a994272793",
 				"id":          "12456789abcdef012345678",
-				"parentId":    "53995c3f42cd8ad8",
+				"parent_id":   "53995c3f42cd8ad8",
 				"durationMs":  1.12,
 				"sampled":     "1",
 				"serviceName": "fooservice",
