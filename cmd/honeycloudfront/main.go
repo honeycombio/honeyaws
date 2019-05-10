@@ -123,7 +123,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 
 For reference see this link:
 
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
+https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html
 `, id)
 					os.Exit(1)
 				}
