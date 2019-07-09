@@ -155,7 +155,8 @@ func dropNegativeTimes(ev *event.Event) {
 // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
 // for reference
 func addTraceData(ev *event.Event) {
-	amznTraceID, ok := ev.Data["trace.trace_id"].(string)
+	// in the original access log field the header is called 'trace_id'
+	amznTraceID, ok := ev.Data["trace_id"].(string)
 	if !ok {
 		return
 	}
@@ -185,9 +186,16 @@ func addTraceData(ev *event.Event) {
 	if rootSpan {
 		ev.Data["trace.span_id"] = ev.Data["trace.trace_id"].(string)
 	}
-	ev.Data["duration_ms"] = ev.Data["request_processing_time"].(float64)
+	ev.Data["duration_ms"], ok = ev.Data["request_processing_time"]
+	if ok {
+		ev.Data["duration_ms"] = ev.Data["duration_ms"].(float64)
+	}
 	ev.Data["service_name"] = ev.Data["elb"].(string)
 	ev.Data["name"] = ev.Data["request_path"].(string)
+
+	// rename misleading trace header field in event
+	delete(ev.Data, "trace_id")
+	ev.Data["request.headers.x-amzn-trace-id"] = amznTraceID
 }
 
 func sendEventsToHoneycomb(in <-chan event.Event) {
