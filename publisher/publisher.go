@@ -155,7 +155,7 @@ func dropNegativeTimes(ev *event.Event) {
 // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
 // for reference
 func addTraceData(ev *event.Event) {
-	amznTraceID, ok := ev.Data["trace_id"].(string)
+	amznTraceID, ok := ev.Data["trace.trace_id"].(string)
 	if !ok {
 		return
 	}
@@ -168,13 +168,13 @@ func addTraceData(ev *event.Event) {
 		switch key {
 		case "Root":
 			versionTimeID := strings.Split(val, "-")
-			ev.Data["traceId"] = versionTimeID[2]
+			ev.Data["trace.trace_id"] = versionTimeID[2]
 		case "Self":
 			versionTimeID := strings.Split(val, "-")
-			ev.Data["id"] = versionTimeID[2]
+			ev.Data["trace.span_id"] = versionTimeID[2]
 			rootSpan = false
 		case "Parent":
-			ev.Data["parentId"] = val
+			ev.Data["trace.parent_id"] = val
 			rootSpan = false
 		case "Sampled":
 			ev.Data["sampled"] = val
@@ -183,10 +183,10 @@ func addTraceData(ev *event.Event) {
 		}
 	}
 	if rootSpan {
-		ev.Data["id"] = ev.Data["traceId"].(string)
+		ev.Data["trace.span_id"] = ev.Data["trace.trace_id"].(string)
 	}
-	ev.Data["durationMs"] = ev.Data["request_processing_time"].(float64)
-	ev.Data["serviceName"] = ev.Data["elb"].(string)
+	ev.Data["duration_ms"] = ev.Data["request_processing_time"].(float64)
+	ev.Data["service_name"] = ev.Data["elb"].(string)
 	ev.Data["name"] = ev.Data["request_path"].(string)
 }
 
