@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -149,6 +150,54 @@ func dropNegativeTimes(ev *event.Event) {
 	}
 }
 
+// parse the included X-Amzn-Trace-Id header if it is present in an ALB access
+// log - see
+// https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
+// for reference
+func addTraceData(ev *event.Event) {
+	// in the original access log field the header is called 'trace_id'
+	amznTraceID, ok := ev.Data["trace_id"].(string)
+	if !ok {
+		return
+	}
+	fields := strings.Split(amznTraceID, ";")
+	rootSpan := true
+	for _, field := range fields {
+		kv := strings.Split(field, "=")
+		key := kv[0]
+		val := kv[1]
+		switch key {
+		case "Root":
+			versionTimeID := strings.Split(val, "-")
+			ev.Data["trace.trace_id"] = versionTimeID[2]
+		case "Self":
+			versionTimeID := strings.Split(val, "-")
+			ev.Data["trace.span_id"] = versionTimeID[2]
+			rootSpan = false
+		case "Parent":
+			ev.Data["trace.parent_id"] = val
+			rootSpan = false
+		case "Sampled":
+			ev.Data["sampled"] = val
+		default:
+			ev.Data[key] = val
+		}
+	}
+	if rootSpan {
+		ev.Data["trace.span_id"] = ev.Data["trace.trace_id"].(string)
+	}
+	ev.Data["duration_ms"], ok = ev.Data["request_processing_time"]
+	if ok {
+		ev.Data["duration_ms"] = ev.Data["duration_ms"].(float64)
+	}
+	ev.Data["service_name"] = ev.Data["elb"].(string)
+	ev.Data["name"] = ev.Data["request_path"].(string)
+
+	// rename misleading trace header field in event
+	delete(ev.Data, "trace_id")
+	ev.Data["request.headers.x-amzn-trace-id"] = amznTraceID
+}
+
 func sendEventsToHoneycomb(in <-chan event.Event) {
 	shaper := requestShaper{&urlshaper.Parser{}}
 	for ev := range in {
@@ -157,6 +206,7 @@ func sendEventsToHoneycomb(in <-chan event.Event) {
 		libhEv.Timestamp = ev.Timestamp
 		libhEv.SampleRate = uint(ev.SampleRate)
 		dropNegativeTimes(&ev)
+		addTraceData(&ev)
 		if err := libhEv.Add(ev.Data); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"event": ev,
