@@ -165,20 +165,23 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			signalCh := make(chan os.Signal)
 			signal.Notify(signalCh, os.Interrupt)
 
-			go func() {
-				<-signalCh
-				logrus.Fatal("Exiting due to interrupt.")
-			}()
-
-			for {
-				download := <-downloadsCh
-				if err := defaultPublisher.Publish(download); err != nil {
-					logrus.WithFields(logrus.Fields{
-						"object": download,
-						"error":  err,
-					}).Error("Cannot properly publish downloaded object")
-				}
+			for i := 0; i < opt.Parallelism; i++ {
+				go func() {
+					for {
+						download := <-downloadsCh
+						if err := defaultPublisher.Publish(download); err != nil {
+							logrus.WithFields(logrus.Fields{
+								"object": download,
+								"error":  err,
+							}).Error("Cannot properly publish downloaded object")
+						}
+					}
+				}()
 			}
+
+			// Wait for the termination signal.
+			<-signalCh
+			logrus.Fatal("Exiting due to interrupt.")
 		}
 	}
 

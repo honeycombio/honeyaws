@@ -141,29 +141,32 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 			signalCh := make(chan os.Signal)
 			signal.Notify(signalCh, os.Interrupt)
 
-			go func() {
-				<-signalCh
-				logrus.Fatal("Exiting due to interrupt.")
-				// TODO(nathanleclaire): Cleanup before
-				// exiting.
-				//
-				// 1. Delete format file, even
-				//    though it's in /tmp.
-				// 2. Also, wait for existing in-flight object
-				//    parsing / sending to finish so that state of
-				//    parsing "cursor" can be written to the JSON
-				//    file.
-			}()
-
-			for {
-				download := <-downloadsCh
-				if err := defaultPublisher.Publish(download); err != nil {
-					logrus.WithFields(logrus.Fields{
-						"object": download,
-						"error":  err,
-					}).Error("Cannot properly publish downloaded object")
-				}
+			for i := 0; i < opt.Parallelism; i++ {
+				go func() {
+					for {
+						download := <-downloadsCh
+						if err := defaultPublisher.Publish(download); err != nil {
+							logrus.WithFields(logrus.Fields{
+								"object": download,
+								"error":  err,
+							}).Error("Cannot properly publish downloaded object")
+						}
+					}
+				}()
 			}
+
+			// Wait for the termination signal.
+			<-signalCh
+			logrus.Fatal("Exiting due to interrupt.")
+			// TODO(nathanleclaire): Cleanup before
+			// exiting.
+			//
+			// 1. Delete format file, even
+			//    though it's in /tmp.
+			// 2. Also, wait for existing in-flight object
+			//    parsing / sending to finish so that state of
+			//    parsing "cursor" can be written to the JSON
+			//    file.
 		}
 	}
 
