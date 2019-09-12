@@ -9,7 +9,7 @@ require (
 	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
 	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
 	github.com/go-ini/ini v1.36.0 // indirect
-	github.com/honeycombio/dynsampler-go v0.0.0-20170825211031-c043ccf54256
+	github.com/honeycombio/dynsampler-go v0.2.1
 	github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c // indirect
 	github.com/honeycombio/honeytail v0.0.0-20180216215327-6af0f50b4c48
 	github.com/honeycombio/libhoney-go v1.4.1-0.20171115013947-1782b3ea9b57

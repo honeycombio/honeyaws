@@ -10,8 +10,8 @@ github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 h1:a4DFiKFJiDRGF
 github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52/go.mod h1:yIquW87NGRw1FU5p5lEkpnt/QxoH5uPAOUlOVkAUuMg=
 github.com/go-ini/ini v1.36.0 h1:63En8accP8FKkFZ77ztSfvQf9kGRJN3qBIdItP46RRk=
 github.com/go-ini/ini v1.36.0/go.mod h1:ByCAeIL28uOIIG0E3PJtZPDL8WnHpFKFOtgjp+3Ies8=
-github.com/honeycombio/dynsampler-go v0.0.0-20170825211031-c043ccf54256 h1:r/ww5B1vS+RQ/+Rmu4sKX+MK1z3DKOBpJe3KqzPD+BI=
-github.com/honeycombio/dynsampler-go v0.0.0-20170825211031-c043ccf54256/go.mod h1:BOeTUPT6fCRH5X/+QqF6Kza3IyLp9uSq/rWgEtI4aZI=
+github.com/honeycombio/dynsampler-go v0.2.1 h1:IbhjbdB0IbLSZn7xVYuk6jjk/ZDk/EO+DJ5OXFZliv8=
+github.com/honeycombio/dynsampler-go v0.2.1/go.mod h1:BOeTUPT6fCRH5X/+QqF6Kza3IyLp9uSq/rWgEtI4aZI=
 github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c h1:BKXyxACo6ASCQP7kfkd0kLiV5BsPfIciVCbd7W78gEg=
 github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c/go.mod h1:b5vehEHPr2kpld6NR9gSja7nMX8lGQbU5ACKOd9aa9g=
 github.com/honeycombio/honeytail v0.0.0-20180216215327-6af0f50b4c48 h1:AODXxvW3DIewNW6++HPLDD3ZFygIMDaybZ0nfCArOJ0=
