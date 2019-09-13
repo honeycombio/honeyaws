@@ -11,6 +11,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	dynsampler "github.com/honeycombio/dynsampler-go"
+	"github.com/honeycombio/honeyaws/options"
+	"github.com/honeycombio/honeyaws/sampler"
 	"github.com/honeycombio/honeyaws/state"
 	"github.com/honeycombio/honeytail/event"
 )
@@ -71,13 +73,12 @@ func flattenCloudTrailRecord(r *CloudTrailRecord) map[string]interface{} {
 	return p
 }
 
-func NewCloudTrailEventParser(sampleRate int) *CloudTrailEventParser {
-	ep := &CloudTrailEventParser{
-		sampler: &dynsampler.AvgSampleRate{
-			ClearFrequencySec: 300,
-			GoalSampleRate:    sampleRate,
-		},
+func NewCloudTrailEventParser(opt *options.Options) *CloudTrailEventParser {
+	s, err := sampler.NewSamplerFromOptions(opt)
+	if err != nil {
+		logrus.WithField("err", err).Fatal("couldn't build sampler from arguments")
 	}
+	ep := &CloudTrailEventParser{sampler: s}
 
 	if err := ep.sampler.Start(); err != nil {
 		logrus.WithField("err", err).Fatal("Couldn't start dynamic sampler")

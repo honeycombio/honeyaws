@@ -107,7 +107,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
 
 			downloadsCh := make(chan state.DownloadedObject)
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudTrailEventParser(opt.SampleRate))
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudTrailEventParser(opt))
 
 			for _, trail := range trailListResp.TrailList {
 

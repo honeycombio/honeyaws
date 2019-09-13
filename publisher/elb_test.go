@@ -7,12 +7,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/state"
 	"github.com/honeycombio/honeytail/event"
 )
 
 func TestNginxParseEvents(t *testing.T) {
-	elbPubisher := NewELBEventParser(1)
+	elbPubisher := NewELBEventParser(&options.Options{SampleRate: 1, SamplerType: "simple"})
 	outCh := make(chan event.Event)
 	tmpFile, err := ioutil.TempFile("", "")
 	if err != nil {

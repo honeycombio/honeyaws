@@ -104,6 +104,20 @@ lower this ratio for rarer, but relevant, events such as HTTP 500-level errors.
 $ honeyelb --samplerate 20 ...  ingest ...
 ```
 
+### Sampler Type
+
+You can choose between two implementations of dynamic sampling: `simple` or `ema`.
+Complete details about these implementations can be found [here](https://github.com/honeycombio/dynsampler-go).
+
+- `simple` looks at a single interval of traffic, defined by the `sampler_interval` arg, and computes sample rates
+based on counts of traffic categories seen in that interval. At every interval, the results of the previous interval
+are discarded.
+- `ema` averages observations from each interval into a moving average of counts, and computes sample rates based
+on those counts. Older observations are phased out at a rate specified by `sampler_decay`. Larger decay values mean that
+sample rates are more heavily influenced by newer traffic
+
+`simple` is suitable for most types of traffic, but we recommend using `ema` if your traffic comes in in bursts.
+
 ## Contributions
 
 Features, bug fixes and other changes to the Honeycomb AWS Bundle are gladly
