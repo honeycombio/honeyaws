@@ -11,6 +11,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	dynsampler "github.com/honeycombio/dynsampler-go"
+	"github.com/honeycombio/honeyaws/options"
+	"github.com/honeycombio/honeyaws/sampler"
 	"github.com/honeycombio/honeyaws/state"
 	"github.com/honeycombio/honeytail/event"
 	"github.com/honeycombio/honeytail/parsers/nginx"
@@ -20,13 +22,13 @@ type ALBEventParser struct {
 	sampler dynsampler.Sampler
 }
 
-func NewALBEventParser(sampleRate int) *ALBEventParser {
-	ep := &ALBEventParser{
-		sampler: &dynsampler.AvgSampleRate{
-			ClearFrequencySec: 300,
-			GoalSampleRate:    sampleRate,
-		},
+func NewALBEventParser(opt *options.Options) *ALBEventParser {
+	s, err := sampler.NewSamplerFromOptions(opt)
+	if err != nil {
+		logrus.WithField("err", err).Fatal("couldn't build sampler from arguments")
 	}
+
+	ep := &ALBEventParser{sampler: s}
 
 	if err := ep.sampler.Start(); err != nil {
 		logrus.WithField("err", err).Fatal("Couldn't start dynamic sampler")

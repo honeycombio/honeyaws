@@ -98,7 +98,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			logrus.WithField("hours", time.Duration(opt.BackfillHr)*time.Hour).Debug("Backfill will be")
 
 			downloadsCh := make(chan state.DownloadedObject)
-			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudFrontEventParser(opt.SampleRate))
+			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudFrontEventParser(opt))
 
 			// For now, just run one goroutine per-distribution
 			for _, id := range distIds {
