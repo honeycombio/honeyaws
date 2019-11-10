@@ -100,42 +100,19 @@ Your write key is available at https://ui.honeycomb.io/account`)
 
 			// For now, just run one goroutine per-LB
 			for _, lbName := range lbNames {
-				logrus.WithFields(logrus.Fields{
-					"lbName": lbName,
-				}).Info("Attempting to ingest LB")
 
-				elbSvc := elb.New(sess, nil)
+				if err := ingestELB(sess, lbName, stater, downloadsCh); err != nil {
 
-				lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elb.DescribeLoadBalancerAttributesInput{
-					LoadBalancerName: aws.String(lbName),
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					// if len(args[1:]) > 0 we stop on the first error
+					// otherwise, we keep trying all load balancers
+					if len(args[1:]) > 0 {
+						logrus.Fatal("Exiting due to fatal error.")
+					}
+
+					logrus.WithFields(logrus.Fields{
+						"lbName": lbName,
+					}).Error("Could not ingest data from a load balancer! See logs for more information.")
 				}
-
-				accessLog := lbResp.LoadBalancerAttributes.AccessLog
-
-				if !*accessLog.Enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ELB %q. Please enable them to use the ingest tool.
-
-For reference see this link:
-
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
-`, lbName)
-					os.Exit(1)
-				}
-				logrus.WithFields(logrus.Fields{
-					"bucket": *accessLog.S3BucketName,
-					"lbName": lbName,
-				}).Info("Access logs are enabled for ELB ♥")
-
-				elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
-
-				// TODO: One-goroutine-per-LB feels a bit
-				// silly.
-				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)
@@ -168,6 +145,47 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 	}
 
 	return fmt.Errorf("Subcommand %q not recognized", args[0])
+}
+
+func ingestELB(sess *session.Session, lbName string, stater state.Stater, downloadsCh chan state.DownloadedObject) error {
+	logrus.WithFields(logrus.Fields{
+		"lbName": lbName,
+	}).Info("Attempting to ingest LB")
+
+	elbSvc := elb.New(sess, nil)
+
+	lbResp, err := elbSvc.DescribeLoadBalancerAttributes(&elb.DescribeLoadBalancerAttributesInput{
+		LoadBalancerName: aws.String(lbName),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return err
+	}
+
+	accessLog := lbResp.LoadBalancerAttributes.AccessLog
+
+	if !*accessLog.Enabled {
+		fmt.Fprintf(os.Stderr, `Access logs are not configured for ELB %q. Please enable them to use the ingest tool.
+
+For reference see this link:
+
+http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
+`, lbName)
+		return fmt.Errorf("access logs are not configured for ELB %q", lbName)
+	}
+	logrus.WithFields(logrus.Fields{
+		"bucket": *accessLog.S3BucketName,
+		"lbName": lbName,
+	}).Info("Access logs are enabled for ELB ♥")
+
+	elbDownloader := logbucket.NewELBDownloader(sess, *accessLog.S3BucketName, *accessLog.S3BucketPrefix, lbName)
+	downloader := logbucket.NewDownloader(sess, stater, elbDownloader, opt.BackfillHr)
+
+	// TODO: One-goroutine-per-LB feels a bit
+	// silly.
+	go downloader.Download(downloadsCh)
+
+	return nil
 }
 
 func main() {

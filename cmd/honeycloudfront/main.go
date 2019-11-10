@@ -106,45 +106,18 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					"id": id,
 				}).Info("Attempting to ingest CloudFront distribution")
 
-				cloudfrontSvc := cloudfront.New(sess, nil)
+				if err := ingestDist(sess, id, stater, downloadsCh); err != nil {
 
-				distConfigResp, err := cloudfrontSvc.GetDistributionConfig(&cloudfront.GetDistributionConfigInput{
-					Id: aws.String(id),
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "Error getting distribution config: ", err)
-					os.Exit(1)
+					// if len(args[1:]) > 0 we stop on the first error
+					// otherwise, we keep trying all distributions
+					if len(args[1:]) > 0 {
+						logrus.Fatal("Exiting due to fatal error.")
+					}
+
+					logrus.WithFields(logrus.Fields{
+						"id": id,
+					}).Error("Could not ingest data from a distribution! See logs for more information.")
 				}
-
-				loggingConfig := distConfigResp.DistributionConfig.Logging
-
-				if !*loggingConfig.Enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for CloudFront distribution ID %q. Please enable them to use the ingest tool.
-
-For reference see this link:
-
-https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html
-`, id)
-					os.Exit(1)
-				}
-
-				// loggingConfig.Bucket returns a bucket URL
-				// (e.g.,
-				// nathanleclaire-cloudfront-test-access-logs.s3.amazonaws.com)
-				// so strip the suffix from the bucket.
-				//
-				// TODO(nathanleclaire): Determine if this is
-				// acceptably robust.
-				bucket := strings.Replace(*loggingConfig.Bucket, ".s3.amazonaws.com", "", -1)
-
-				logrus.WithFields(logrus.Fields{
-					"bucket": bucket,
-					"id":     id,
-				}).Info("Access logs are enabled for CloudFront distribution ♥")
-
-				cloudfrontDownloader := logbucket.NewCloudFrontDownloader(bucket, *loggingConfig.Prefix, id)
-				downloader := logbucket.NewDownloader(sess, stater, cloudfrontDownloader, opt.BackfillHr)
-				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)
@@ -167,6 +140,54 @@ https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.ht
 	}
 
 	return fmt.Errorf("Subcommand %q not recognized", args[0])
+}
+
+func ingestDist(sess *session.Session, id string, stater state.Stater, downloadsCh chan state.DownloadedObject) error {
+	logrus.WithFields(logrus.Fields{
+		"id": id,
+	}).Info("Attempting to ingest CloudFront distribution")
+
+	cloudfrontSvc := cloudfront.New(sess, nil)
+
+	distConfigResp, err := cloudfrontSvc.GetDistributionConfig(&cloudfront.GetDistributionConfigInput{
+		Id: aws.String(id),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error getting distribution config: ", err)
+		return err
+	}
+
+	loggingConfig := distConfigResp.DistributionConfig.Logging
+
+	if !*loggingConfig.Enabled {
+		fmt.Fprintf(os.Stderr, `Access logs are not configured for CloudFront distribution ID %q. Please enable them to use the ingest tool.
+
+For reference see this link:
+
+https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html
+`, id)
+		return fmt.Errorf("access logs are not configured for CloudFront distribution ID %q", id)
+	}
+
+	// loggingConfig.Bucket returns a bucket URL
+	// (e.g.,
+	// nathanleclaire-cloudfront-test-access-logs.s3.amazonaws.com)
+	// so strip the suffix from the bucket.
+	//
+	// TODO(nathanleclaire): Determine if this is
+	// acceptably robust.
+	bucket := strings.Replace(*loggingConfig.Bucket, ".s3.amazonaws.com", "", -1)
+
+	logrus.WithFields(logrus.Fields{
+		"bucket": bucket,
+		"id":     id,
+	}).Info("Access logs are enabled for CloudFront distribution ♥")
+
+	cloudfrontDownloader := logbucket.NewCloudFrontDownloader(bucket, *loggingConfig.Prefix, id)
+	downloader := logbucket.NewDownloader(sess, stater, cloudfrontDownloader, opt.BackfillHr)
+	go downloader.Download(downloadsCh)
+
+	return nil
 }
 
 func main() {
