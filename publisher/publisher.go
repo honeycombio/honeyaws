@@ -164,6 +164,10 @@ func addTraceData(ev *event.Event) {
 	rootSpan := true
 	for _, field := range fields {
 		kv := strings.Split(field, "=")
+		// something we don't expect
+		if len(kv) != 2 {
+			continue
+		}
 		key := kv[0]
 		val := kv[1]
 		switch key {
@@ -186,12 +190,15 @@ func addTraceData(ev *event.Event) {
 	if rootSpan {
 		ev.Data["trace.span_id"] = ev.Data["trace.trace_id"].(string)
 	}
-	ev.Data["duration_ms"], ok = ev.Data["request_processing_time"]
-	if ok {
-		ev.Data["duration_ms"] = ev.Data["duration_ms"].(float64)
+	if durationMs, ok := ev.Data["request_processing_time"].(float64); ok {
+		ev.Data["duration_ms"] = durationMs
 	}
-	ev.Data["service_name"] = ev.Data["elb"].(string)
-	ev.Data["name"] = ev.Data["request_path"].(string)
+	if elb, ok := ev.Data["elb"].(string); ok {
+		ev.Data["service_name"] = elb
+	}
+	if requestPath, ok := ev.Data["request_path"].(string); ok {
+		ev.Data["name"] = requestPath
+	}
 
 	// rename misleading trace header field in event
 	delete(ev.Data, "trace_id")
