@@ -15,7 +15,7 @@ services:
   - docker
 
 go:
-    - 1.8
+    - 1.14
 
 script:
     - set -e

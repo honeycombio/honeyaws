@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	dynsampler "github.com/honeycombio/dynsampler-go"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/sampler"
