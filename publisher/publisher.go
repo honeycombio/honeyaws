@@ -31,10 +31,16 @@ var (
 	// Example CloudFront log format (aws_cf_web):
 	// 2014-05-23 01:13:11 FRA2 182 192.0.2.10 GET d111111abcdef8.cloudfront.net /view/my/file.html 200 www.displaymyfiles.com Mozilla/4.0%20(compatible;%20MSIE%205.0b1;%20Mac_PowerPC) - zip=98101 RefreshHit MRVMF7KydIvxMWfJIglgwHQwZsbG2IhRJ07sn9AkKUFSHS9EXAMPLE== d111111abcdef8.cloudfront.net http - 0.001 - - - RefreshHit HTTP/1.1
 
+	// TODO find creation time in here, make sure it's recorded, us it for duration
 	// TODO: update $unknown field once ALB documentation is updated
-	logFormat = []byte(fmt.Sprintf(`log_format %s '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';
+	logFormat = []byte(fmt.Sprintf(
+		`log_format %s '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';
 log_format %s '$timestamp $x_edge_location $sc_bytes $c_ip $cs_method $cs_host $cs_uri_stem $sc_status $cs_referer $cs_user_agent $cs_uri_query $cs_cookie $x_edge_result_type $x_edge_request_id $x_host_header $cs_protocol $cs_bytes $time_taken $x_forwarded_for $ssl_protocol $ssl_cipher $x_edge_response_result_type $cs_protocol_version';
-log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" $domain_name $chosen_cert_arn $unknown';`, AWSElasticLoadBalancerFormat, AWSCloudFrontWebFormat, AWSApplicationLoadBalancerFormat))
+log_format %s '$type $timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" "$domain_name" "$chosen_cert_arn" $matched_rule_priority $request_creation_time';`,
+		AWSElasticLoadBalancerFormat,
+		AWSCloudFrontWebFormat,
+		AWSApplicationLoadBalancerFormat,
+	))
 	libhoneyInitialized = false
 	formatFileName      string
 )
@@ -190,9 +196,24 @@ func addTraceData(ev *event.Event) {
 	if rootSpan {
 		ev.Data["trace.span_id"] = ev.Data["trace.trace_id"].(string)
 	}
-	if durationMs, ok := ev.Data["request_processing_time"].(float64); ok {
+
+	var durationMs float64
+	if startTime, ok := ev.Data["request_creation_time"].(string); ok {
+		tm, err := time.Parse(time.RFC3339Nano, startTime)
+		if err == nil {
+			duration := ev.Timestamp.Sub(tm)
+			if duration > 0 {
+				durationMs = float64(duration / time.Millisecond)
+			}
+		}
+	}
+	if durationMs == 0.0 {
+		durationMs, _ = ev.Data["request_processing_time"].(float64)
+	}
+	if durationMs > 0.0 {
 		ev.Data["duration_ms"] = durationMs
 	}
+
 	if elb, ok := ev.Data["elb"].(string); ok {
 		ev.Data["service_name"] = elb
 	}
