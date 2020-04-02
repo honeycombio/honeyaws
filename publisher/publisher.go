@@ -176,11 +176,9 @@ func addTraceData(ev *event.Event) {
 		val := kv[1]
 		switch key {
 		case "Root":
-			versionTimeID := strings.Split(val, "-")
-			ev.Data["trace.trace_id"] = versionTimeID[2]
+			ev.Data["trace.trace_id"] = val
 		case "Self":
-			versionTimeID := strings.Split(val, "-")
-			ev.Data["trace.span_id"] = versionTimeID[2]
+			ev.Data["trace.span_id"] = val
 			rootSpan = false
 		case "Parent":
 			ev.Data["trace.parent_id"] = val
