@@ -147,7 +147,7 @@ For reference see this link:
 
 http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
 `, lbName)
-					os.Exit(1)
+					continue
 				}
 				logrus.WithFields(logrus.Fields{
 					"bucket": bucketName,
