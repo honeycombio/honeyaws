@@ -1,13 +1,9 @@
-FROM golang:alpine
+FROM golang:1.9-alpine
+COPY . /go/src/github.com/honeycombio/honeyaws
+WORKDIR /go/src/github.com/honeycombio/honeyaws
+RUN go install ./...
 
-RUN apk add --update --no-cache git
-RUN go get github.com/honeycombio/honeyaws/cmd/honeyelb
-RUN go get github.com/honeycombio/honeyaws/cmd/honeyalb
-RUN go get github.com/honeycombio/honeyaws/cmd/honeycloudfront
-RUN go get github.com/honeycombio/honeyaws/cmd/honeycloudtrail
-
-FROM alpine
-
+FROM golang:1.9-alpine
 RUN apk add --update --no-cache ca-certificates
 COPY --from=0 /go/bin/honeyelb /usr/bin/honeyelb
 COPY --from=0 /go/bin/honeyalb /usr/bin/honeyalb
