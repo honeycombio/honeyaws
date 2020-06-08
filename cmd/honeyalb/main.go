@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -103,63 +104,18 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					"lbName": lbName,
 				}).Info("Attempting to ingest ALB")
 
-				elbSvc := elbv2.New(sess, nil)
+				if err := ingestDist(sess, lbName, stater, downloadsCh); err != nil {
 
-				lbNameResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
-					Names: []*string{
-						aws.String(lbName),
-					},
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
-
-				lbArn := lbNameResp.LoadBalancers[0].LoadBalancerArn
-				lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
-					LoadBalancerArn: lbArn,
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
-
-				enabled := false
-				bucketName := ""
-				bucketPrefix := ""
-
-				for _, element := range lbArnResp.Attributes {
-					if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
-						enabled = true
+					// if len(args[1:]) > 0 we stop on the first error
+					// otherwise, we keep trying all distributions
+					if len(args[1:]) > 0 {
+						logrus.Fatal("Exiting due to fatal error.")
 					}
-					if *element.Key == "access_logs.s3.bucket" {
-						bucketName = *element.Value
-					}
-					if *element.Key == "access_logs.s3.prefix" {
-						bucketPrefix = *element.Value
-					}
+
+					logrus.WithFields(logrus.Fields{
+						"id": lbName,
+					}).Error("Could not ingest data from a distribution! See logs for more information.")
 				}
-
-				if !enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
-
-For reference see this link:
-
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
-`, lbName)
-					os.Exit(1)
-				}
-				logrus.WithFields(logrus.Fields{
-					"bucket": bucketName,
-					"lbName": lbName,
-				}).Info("Access logs are enabled for ALB ♥")
-
-				albDownloader := logbucket.NewALBDownloader(sess, bucketName, bucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
-
-				// TODO: One-goroutine-per-LB feels a bit
-				// silly.
-				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)
@@ -227,4 +183,65 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 		fmt.Fprintln(os.Stderr, "Error: ", err)
 		os.Exit(1)
 	}
+}
+
+func ingestDist(sess *session.Session, id string, stater state.Stater, downloadsCh chan state.DownloadedObject) error {
+
+	elbSvc := elbv2.New(sess, nil)
+
+	lbNameResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
+		Names: []*string{
+			aws.String(id),
+		},
+	})
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	lbArn := lbNameResp.LoadBalancers[0].LoadBalancerArn
+	lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
+		LoadBalancerArn: lbArn,
+	})
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	enabled := false
+	bucketName := ""
+	bucketPrefix := ""
+
+	for _, element := range lbArnResp.Attributes {
+		if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
+			enabled = true
+		}
+		if *element.Key == "access_logs.s3.bucket" {
+			bucketName = *element.Value
+		}
+		if *element.Key == "access_logs.s3.prefix" {
+			bucketPrefix = *element.Value
+		}
+	}
+
+	if !enabled {
+		fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
+
+For reference see this link:
+
+http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
+`, id)
+		return errors.New("access logs no enabled")
+	}
+	logrus.WithFields(logrus.Fields{
+		"bucket": bucketName,
+		"lbName": id,
+	}).Info("Access logs are enabled for ALB ♥")
+
+	albDownloader := logbucket.NewALBDownloader(sess, bucketName, bucketPrefix, id)
+	downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
+
+	// TODO: One-goroutine-per-LB feels a bit
+	// silly.
+	go downloader.Download(downloadsCh)
+
+	return nil
 }
