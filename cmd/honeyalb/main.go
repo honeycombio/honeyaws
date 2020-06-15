@@ -185,7 +185,7 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 	}
 }
 
-func ingestDist(sess *session.Session, id string, stater state.Stater, downloadsCh chan state.DownloadedObject) error {
+func ingestALB(sess *session.Session, id string, stater state.Stater, downloadsCh chan state.DownloadedObject) error {
 
 	elbSvc := elbv2.New(sess, nil)
 
