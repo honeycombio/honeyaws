@@ -107,7 +107,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				if err := ingestDist(sess, lbName, stater, downloadsCh); err != nil {
 
 					// if len(args[1:]) > 0 we stop on the first error
-					// otherwise, we keep trying all distributions
+					// otherwise, we keep trying all load balancers
 					if len(args[1:]) > 0 {
 						logrus.Fatal("Exiting due to fatal error.")
 					}
