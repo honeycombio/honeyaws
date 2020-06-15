@@ -114,7 +114,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 
 					logrus.WithFields(logrus.Fields{
 						"id": lbName,
-					}).Error("Could not ingest data from a distribution! See logs for more information.")
+					}).Error("Could not ingest data from a load balancer! See logs for more information.")
 				}
 			}
 
