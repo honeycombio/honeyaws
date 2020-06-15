@@ -104,7 +104,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					"lbName": lbName,
 				}).Info("Attempting to ingest ALB")
 
-				if err := ingestDist(sess, lbName, stater, downloadsCh); err != nil {
+				if err := ingestALB(sess, lbName, stater, downloadsCh); err != nil {
 
 					// if len(args[1:]) > 0 we stop on the first error
 					// otherwise, we keep trying all load balancers
