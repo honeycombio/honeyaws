@@ -29,12 +29,12 @@ jobs:
               go get -u golang.org/x/lint/golint
               golint ./...
             fi
-      - run:
-          name: "Run gofmt"
-          command: >
-            if [[ "${LATEST}" = true ]]; then
-              diff -u <(echo -n) <(gofmt -d -e .)
-            fi
+    #   - run:
+    #       name: "Run gofmt"
+    #       command: >
+    #         if [[ "${LATEST}" = true ]]; then
+    #           diff -u <(echo -n) <(gofmt -d -e .)
+    #         fi
       - run:
           name: "Run go vet"
           command:  >
