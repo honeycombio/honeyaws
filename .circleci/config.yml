@@ -43,10 +43,10 @@ jobs:
             fi
       - run: go test -v -race ./...
       # Build binary and packages
-    #   - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t deb
-    #   - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t rpm
+      - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t deb
+      - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t rpm
       # Check that packages install
-    #   - run: pkg-test/test.sh "1.${CIRCLE_BUILD_NUM}"
+      - run: pkg-test/test.sh "1.${CIRCLE_BUILD_NUM}"
 
   "latest":
     <<: *test
