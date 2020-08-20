@@ -11,7 +11,7 @@ jobs:
       # Install fpm for deb/rpm package building
       - run: sudo apt-get -qq update
       - run: sudo apt-get install -y build-essential rpm ruby
-      - run: gem install fpm
+      - run: sudo gem install fpm
       # Our build steps: we checkout the repo, fetch our deps, lint, and finally
       # run "go test" on the package.
       - checkout
