@@ -1,4 +1,4 @@
-version: 2.1
+version: 2.0
 
 jobs:
   # Base test configuration for Go library tests Each distinct version should
