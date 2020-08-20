@@ -42,7 +42,7 @@ jobs:
               go vet -v ./...
             fi
       - run: go test -v -race ./...
-	  # Enable docker support
+      # Enable docker support
 	  - setup_remote_docker
       # Build binary and packages
       - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t deb
