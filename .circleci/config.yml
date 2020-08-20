@@ -29,18 +29,18 @@ jobs:
               go get -u golang.org/x/lint/golint
               golint ./...
             fi
-      - run:
-          name: "Run gofmt"
-          command: >
-            if [[ "${LATEST}" = true ]]; then
-              diff -u <(echo -n) <(gofmt -d -e .)
-            fi
-      - run:
-          name: "Run go vet"
-          command:  >
-            if [[ "${LATEST}" = true ]]; then
-              go vet -v ./...
-            fi
+    #   - run:
+    #       name: "Run gofmt"
+    #       command: >
+    #         if [[ "${LATEST}" = true ]]; then
+    #           diff -u <(echo -n) <(gofmt -d -e .)
+    #         fi
+    #   - run:
+    #       name: "Run go vet"
+    #       command:  >
+    #         if [[ "${LATEST}" = true ]]; then
+    #           go vet -v ./...
+    #         fi
       - run: go test -v -race ./...
       # Enable docker support
       - setup_remote_docker
