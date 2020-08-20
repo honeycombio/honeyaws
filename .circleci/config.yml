@@ -35,12 +35,12 @@ jobs:
     #         if [[ "${LATEST}" = true ]]; then
     #           diff -u <(echo -n) <(gofmt -d -e .)
     #         fi
-      - run:
-          name: "Run go vet"
-          command:  >
-            if [[ "${LATEST}" = true ]]; then
-              go vet -v ./...
-            fi
+    #   - run:
+    #       name: "Run go vet"
+    #       command:  >
+    #         if [[ "${LATEST}" = true ]]; then
+    #           go vet -v ./...
+    #         fi
       - run: go test -v -race ./...
       # Build binary and packages
     #   - run: ./build-pkg.sh -v "1.${CIRCLE_BUILD_NUM}" -t deb
