@@ -1,4 +1,4 @@
-## Honeycomb AWS Bundle [![Build Status](https://travis-ci.org/honeycombio/honeyaws.svg?branch=master)](https://travis-ci.org/honeycombio/honeyaws)
+## Honeycomb AWS Bundle [![CircleCI](https://circleci.com/gh/honeycombio/honeyaws.svg?style=svg)](https://circleci.com/gh/honeycombio/honeyaws)
 
 `honeyaws` is a collection of programs to send events from your AWS
 infrastructure into [Honeycomb](https://www.honeycomb.io/), a service
