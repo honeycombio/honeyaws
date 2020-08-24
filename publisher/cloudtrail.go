@@ -18,20 +18,20 @@ import (
 )
 
 type CloudTrailResource struct {
-	ResourceARN       string `json:ARN`
-	ResourceAccountId string `json:accountId`
+	ResourceARN       string `json:"ARN"`
+	ResourceAccountId string `json:"accountId"`
 }
 
 type CloudTrailUserIdentity struct {
-	Type        string `json:type`
-	PrincipleId string `json:principleId`
-	ARN         string `json:arn`
-	AccountId   string `json:accountId`
-	AccessKeyId string `json:accessKeyId`
+	Type        string `json:"type"`
+	PrincipleId string `json:"principleId"`
+	ARN         string `json:"arn"`
+	AccountId   string `json:"accountId"`
+	AccessKeyId string `json:"accessKeyId"`
 }
 
 type CloudTrailRecords struct {
-	Records []CloudTrailRecord `json:Records`
+	Records []CloudTrailRecord `json:"Records"`
 }
 
 type CloudTrailRecord struct {
