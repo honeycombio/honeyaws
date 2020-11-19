@@ -78,7 +78,7 @@ func TestALBParseEvents(t *testing.T) {
 	}
 
 	excpectedDurMs := 5000.0
-	addTraceData(&ev)
+	addTraceData(&ev, false)
 	if ev.Data["duration_ms"] != excpectedDurMs {
 		t.Fatalf("actual duration_ms: %v, expected: %v", ev.Data["duration_ms"], excpectedDurMs)
 	}
