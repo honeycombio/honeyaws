@@ -120,7 +120,7 @@ func NewHoneycombPublisher(opt *options.Options, stater state.Stater, eventParse
 	hp.parsedCh = make(chan event.Event)
 	hp.sampledCh = make(chan event.Event)
 
-	go sendEventsToHoneycomb(hp.sampledCh)
+	go sendEventsToHoneycomb(hp.sampledCh, opt.EdgeMode)
 	go hp.EventParser.DynSample(hp.parsedCh, hp.sampledCh)
 
 	return hp
@@ -158,7 +158,7 @@ func dropNegativeTimes(ev *event.Event) {
 // log - see
 // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
 // for reference
-func addTraceData(ev *event.Event) {
+func addTraceData(ev *event.Event, edgeMode bool) {
 	// in the original access log field the header is called 'trace_id'
 	amznTraceID, ok := ev.Data["trace_id"].(string)
 	if !ok {
@@ -181,8 +181,12 @@ func addTraceData(ev *event.Event) {
 			ev.Data["trace.span_id"] = val
 			rootSpan = false
 		case "Parent":
-			ev.Data["trace.parent_id"] = val
-			rootSpan = false
+			// if we're running in "edge mode", ignore the parent id. We want
+			// the load balancer to always be the root of the trace.
+			if !edgeMode {
+				ev.Data["trace.parent_id"] = val
+				rootSpan = false
+			}
 		case "Sampled":
 			ev.Data["sampled"] = val
 		default:
@@ -222,7 +226,7 @@ func addTraceData(ev *event.Event) {
 	ev.Data["request.headers.x-amzn-trace-id"] = amznTraceID
 }
 
-func sendEventsToHoneycomb(in <-chan event.Event) {
+func sendEventsToHoneycomb(in <-chan event.Event, edgeMode bool) {
 	shaper := requestShaper{&urlshaper.Parser{}}
 	for ev := range in {
 		shaper.Shape("request", &ev)
@@ -230,7 +234,7 @@ func sendEventsToHoneycomb(in <-chan event.Event) {
 		libhEv.Timestamp = ev.Timestamp
 		libhEv.SampleRate = uint(ev.SampleRate)
 		dropNegativeTimes(&ev)
-		addTraceData(&ev)
+		addTraceData(&ev, edgeMode)
 		if err := libhEv.Add(ev.Data); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"event": ev,

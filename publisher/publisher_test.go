@@ -80,7 +80,7 @@ func TestParseTraceData(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		addTraceData(&tc.ev)
+		addTraceData(&tc.ev, false)
 		if !reflect.DeepEqual(tc.ev.Data, tc.expected) {
 			t.Error("Output did not match expected:")
 			for k, v := range tc.ev.Data {
