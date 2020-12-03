@@ -160,7 +160,7 @@ func main() {
 	logrus.WithField("version", BuildID).Debug("Program starting")
 
 	if opt.Dataset == "aws-$SERVICE-access" {
-		opt.Dataset = "aws-elb-access"
+		opt.Dataset = "aws-alb-access"
 	}
 
 	if _, err := os.Stat(opt.StateDir); os.IsNotExist(err) {
