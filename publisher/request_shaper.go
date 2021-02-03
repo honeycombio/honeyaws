@@ -3,9 +3,9 @@ package publisher
 import (
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/honeycombio/honeytail/event"
 	"github.com/honeycombio/urlshaper"
+	"github.com/sirupsen/logrus"
 )
 
 type requestShaper struct {
