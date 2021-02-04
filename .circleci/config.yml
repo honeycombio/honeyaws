@@ -79,11 +79,6 @@ workflows:
       - build_packages:
           requires:
             - build
-          filters:
-            tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
