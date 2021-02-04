@@ -17,7 +17,7 @@ jobs:
       - image: circleci/golang:1.13
     steps:
       - checkout
-      - run: go install -ldflags "-X main.BuildID=${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
+      - run: go install -ldflags "-X main.BuildID=`[ -z $CIRCLE_TAG ] && echo v1.0.0 || echo -n $CIRCLE_TAG`" github.com/honeycombio/honeyaws/cmd/...
       - setup_remote_docker
       - run:
           name: apt_get_update
@@ -31,11 +31,11 @@ jobs:
       - run: mkdir -p ~/artifacts
       - run:
           name: build_deb
-          command: ./build-pkg.sh -v `[ -z "${CIRCLE_TAG}" ] && echo "v1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
+          command: ./build-pkg.sh -v `[ -z "${CIRCLE_TAG}" ] && echo "1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t deb && cp $GOPATH/bin/honeyaws_`[ -z "${CIRCLE_TAG}" ] && echo "1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'`_amd64.deb ~/artifacts
       - run:
           name: build_rpm
-          command: ./build-pkg.sh -v `[ -z "${CIRCLE_TAG}" ] && echo "v1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
-      - run: pkg-test/test.sh "${CIRCLE_TAG}"
+          command: CIRCLE_TAG=`[ -z "${CIRCLE_TAG}" ] && echo "1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` && ./build-pkg.sh -v "${CIRCLE_TAG}" -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
+      - run: pkg-test/test.sh `[ -z "${CIRCLE_TAG}" ] && echo "1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'`
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
           root: ~/
