@@ -11,7 +11,13 @@ jobs:
     steps:
       - checkout
       - run: go test --timeout 10s -v ./...
-      - run: go install -ldflags "-X main.BuildID=1.${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
+
+  build_packages:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - run: o install -ldflags "-X main.BuildID=${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
       - setup_remote_docker
       - run:
           name: apt_get_update
@@ -25,11 +31,11 @@ jobs:
       - run: mkdir -p ~/artifacts
       - run:
           name: build_deb
-          command: ./build-pkg.sh -v "1.${CIRCLE_TAG}" -t deb && cp $GOPATH/bin/honeyaws_1.${CIRCLE_TAG}_amd64.deb ~/artifacts
+          command: ./build-pkg.sh -v `echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
       - run:
           name: build_rpm
-          command: ./build-pkg.sh -v "1.${CIRCLE_TAG}" -t rpm && cp $GOPATH/bin/honeyaws-1.${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
-      - run: pkg-test/test.sh "1.${CIRCLE_TAG}"
+          command: ./build-pkg.sh -v `echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
+      - run: pkg-test/test.sh "${CIRCLE_TAG}"
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
           root: ~/
@@ -70,6 +76,14 @@ workflows:
   build:
     jobs:
       - build
+      - build_packages:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
