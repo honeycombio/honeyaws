@@ -81,13 +81,13 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v.*/
+              only: /^v[0-9].*/
             branches:
               ignore: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
-            - build
+            - build_packages
           filters:
             tags:
               only: /^v.*/
@@ -96,7 +96,7 @@ workflows:
       - publish_s3:
           context: Honeycomb Secrets for Public Repos
           requires:
-            - build
+            - build_packages
           filters:
             tags:
               only: /^v.*/
@@ -107,7 +107,7 @@ workflows:
           extra_build_args: --build-arg BUILD_ID=${CIRCLE_TAG:1}
           image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
           requires:
-            - build
+            - build_packages
           filters:
             tags:
               only: /^v.*/
