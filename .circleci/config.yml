@@ -11,7 +11,13 @@ jobs:
     steps:
       - checkout
       - run: go test --timeout 10s -v ./...
-      - run: go install -ldflags "-X main.BuildID=${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
+
+  build_packages:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - run: o install -ldflags "-X main.BuildID=${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
       - setup_remote_docker
       - run:
           name: apt_get_update
@@ -70,6 +76,14 @@ workflows:
   build:
     jobs:
       - build
+      - build_packages:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
