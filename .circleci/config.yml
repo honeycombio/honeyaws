@@ -31,10 +31,10 @@ jobs:
       - run: mkdir -p ~/artifacts
       - run:
           name: build_deb
-          command: ./build-pkg.sh -v `echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
+          command: ./build-pkg.sh -v `[ -z "${CIRCLE_TAG}" ] && echo "v1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
       - run:
           name: build_rpm
-          command: ./build-pkg.sh -v `echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
+          command: ./build-pkg.sh -v `[ -z "${CIRCLE_TAG}" ] && echo "v1.0.0" || echo -n "${CIRCLE_TAG}" | sed 's/v//g'` -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
       - run: pkg-test/test.sh "${CIRCLE_TAG}"
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
