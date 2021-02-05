@@ -1,6 +1,10 @@
 FROM golang:alpine
 
 RUN apk add --update --no-cache git
+
+WORKDIR /
+RUN go mod init github.com/some/module
+
 RUN go get github.com/honeycombio/honeyaws/cmd/honeyelb
 RUN go get github.com/honeycombio/honeyaws/cmd/honeyalb
 RUN go get github.com/honeycombio/honeyaws/cmd/honeycloudfront
