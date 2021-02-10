@@ -21,25 +21,25 @@ commands:
       - run: |
           GOOS=<< parameters.os >> \
           GOARCH=<< parameters.arch >> \
-          cd cmd/honeyalb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          cd cmd/honeyalb && go build -ldflags "-X main.BuildID=v1.4.0" \
           -o $GOPATH/bin/honeyalb-<< parameters.os >>-<< parameters.arch >> \
           .
       - run: |
           GOOS=<< parameters.os >> \
           GOARCH=<< parameters.arch >> \
-          cd cmd/honeyelb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          cd cmd/honeyelb && go build -ldflags "-X main.BuildID=v1.4.0" \
           -o $GOPATH/bin/honeyelb-<< parameters.os >>-<< parameters.arch >> \
           .
       - run: |
           GOOS=<< parameters.os >> \
           GOARCH=<< parameters.arch >> \
-          cd cmd/honeycloudfront && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          cd cmd/honeycloudfront && go build -ldflags "-X main.BuildID=v1.4.0" \
           -o $GOPATH/bin/honeycloudfront-<< parameters.os >>-<< parameters.arch >> \
           .
       - run: |
           GOOS=<< parameters.os >> \
           GOARCH=<< parameters.arch >> \
-          cd cmd/honeycloudtrail && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          cd cmd/honeycloudtrail && go build -ldflags "-X main.BuildID=v1.4.0" \
           -o $GOPATH/bin/honeycloudtrail-<< parameters.os >>-<< parameters.arch >> \
           .
 
@@ -56,7 +56,6 @@ jobs:
       - image: circleci/golang:1.13
     steps:
       - checkout
-      - run: go install -ldflags "-X main.BuildID=${CIRCLE_TAG}" github.com/honeycombio/honeyaws/cmd/...
       - setup_remote_docker
       - run:
           name: apt_get_update
@@ -79,11 +78,11 @@ jobs:
           arch: amd64
       - run:
           name: build_deb
-          command: CIRCLE_TAG=`echo -n "${CIRCLE_TAG}" | sed 's/v//g'` && ./build-pkg.sh -v "${CIRCLE_TAG}" -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
+          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "v1.4.0" -t deb && cp $GOPATH/bin/honeyaws_v1.4.0_amd64.deb ~/artifacts
       - run:
           name: build_rpm
-          command: CIRCLE_TAG=`echo -n "${CIRCLE_TAG}" | sed 's/v//g'` && ./build-pkg.sh -v "${CIRCLE_TAG}" -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
-      - run: pkg-test/test.sh `echo -n "${CIRCLE_TAG}" | sed 's/v//g'`
+          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "v1.4.0" -t rpm && cp $GOPATH/bin/honeyaws-v1.4.0-1.x86_64.rpm ~/artifacts
+      - run: pkg-test/test.sh `echo -n "v1.4.0" | sed 's/v//g'`
       - run: cp $GOPATH/bin/honey-* ~/artifacts
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
@@ -133,9 +132,7 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
+              only: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
