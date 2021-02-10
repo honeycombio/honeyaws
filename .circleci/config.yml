@@ -56,6 +56,7 @@ jobs:
       - image: circleci/golang:1.13
     steps:
       - checkout
+      - run: go install -ldflags "-X main.BuildID=v1.4.0" github.com/honeycombio/honeyaws/cmd/...
       - setup_remote_docker
       - run:
           name: apt_get_update
@@ -67,6 +68,13 @@ jobs:
           name: gem_install
           command: sudo gem install fpm
       - run: mkdir -p ~/artifacts
+      - run:
+          name: build_deb
+          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "1.4.0" -t deb && cp $GOPATH/bin/honeyaws_1.4.0_amd64.deb ~/artifacts
+      - run:
+          name: build_rpm
+          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "1.4.0" -t rpm && cp $GOPATH/bin/honeyaws-1.4.0-1.x86_64.rpm ~/artifacts
+      - run: pkg-test/test.sh `echo -n "v1.4.0" | sed 's/v//g'`
       - go-build:
           os: linux
           arch: amd64
@@ -76,14 +84,7 @@ jobs:
       - go-build:
           os: darwin
           arch: amd64
-      - run:
-          name: build_deb
-          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "v1.4.0" -t deb && cp $GOPATH/bin/honeyaws_v1.4.0_amd64.deb ~/artifacts
-      - run:
-          name: build_rpm
-          command: CIRCLE_TAG=`echo -n "v1.4.0" | sed 's/v//g'` && ./build-pkg.sh -v "v1.4.0" -t rpm && cp $GOPATH/bin/honeyaws-v1.4.0-1.x86_64.rpm ~/artifacts
-      - run: pkg-test/test.sh `echo -n "v1.4.0" | sed 's/v//g'`
-      - run: cp $GOPATH/bin/honey-* ~/artifacts
+      - run: cp $GOPATH/bin/honey* ~/artifacts
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
           root: ~/
