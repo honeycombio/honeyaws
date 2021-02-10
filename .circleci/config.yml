@@ -149,9 +149,7 @@ workflows:
             - build_packages
           filters:
             tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
+              only: /.*/
       - docker/publish:
           tag: latest,${CIRCLE_TAG:1}
           extra_build_args: --build-arg BUILD_ID=${CIRCLE_TAG:1}
