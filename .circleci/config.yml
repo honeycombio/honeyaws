@@ -4,6 +4,45 @@ orbs:
   aws-cli: circleci/aws-cli@0.1.13
   docker: circleci/docker@1.3.0
 
+commands:
+  go-build:
+    parameters:
+      os:
+        description: Target operating system
+        type: enum
+        enum: ["linux", "darwin"]
+        default: "linux"
+      arch:
+        description: Target architecture
+        type: enum
+        enum: ["amd64", "arm64"]
+        default: "amd64"
+    steps:
+      - run: |
+          GOOS=<< parameters.os >> \
+          GOARCH=<< parameters.arch >> \
+          cd cmd/honeyalb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          -o $GOPATH/bin/honeyalb-<< parameters.os >>-<< parameters.arch >> \
+          .
+      - run: |
+          GOOS=<< parameters.os >> \
+          GOARCH=<< parameters.arch >> \
+          cd cmd/honeyelb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          -o $GOPATH/bin/honeyelb-<< parameters.os >>-<< parameters.arch >> \
+          .
+      - run: |
+          GOOS=<< parameters.os >> \
+          GOARCH=<< parameters.arch >> \
+          cd cmd/honeycloudfront && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          -o $GOPATH/bin/honeycloudfront-<< parameters.os >>-<< parameters.arch >> \
+          .
+      - run: |
+          GOOS=<< parameters.os >> \
+          GOARCH=<< parameters.arch >> \
+          cd cmd/honeycloudtrail && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+          -o $GOPATH/bin/honeycloudtrail-<< parameters.os >>-<< parameters.arch >> \
+          .
+
 jobs:
   build:
     docker:
@@ -29,6 +68,15 @@ jobs:
           name: gem_install
           command: sudo gem install fpm
       - run: mkdir -p ~/artifacts
+      - go-build:
+          os: linux
+          arch: amd64
+      - go-build:
+          os: linux
+          arch: arm64
+      - go-build:
+          os: darwin
+          arch: amd64
       - run:
           name: build_deb
           command: CIRCLE_TAG=`echo -n "${CIRCLE_TAG}" | sed 's/v//g'` && ./build-pkg.sh -v "${CIRCLE_TAG}" -t deb && cp $GOPATH/bin/honeyaws_${CIRCLE_TAG}_amd64.deb ~/artifacts
@@ -36,6 +84,7 @@ jobs:
           name: build_rpm
           command: CIRCLE_TAG=`echo -n "${CIRCLE_TAG}" | sed 's/v//g'` && ./build-pkg.sh -v "${CIRCLE_TAG}" -t rpm && cp $GOPATH/bin/honeyaws-${CIRCLE_TAG}-1.x86_64.rpm ~/artifacts
       - run: pkg-test/test.sh `echo -n "${CIRCLE_TAG}" | sed 's/v//g'`
+      - run: cp $GOPATH/bin/honey-* ~/artifacts
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
           root: ~/
