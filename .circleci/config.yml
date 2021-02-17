@@ -10,38 +10,50 @@ commands:
       os:
         description: Target operating system
         type: enum
-        enum: ["linux", "darwin"]
+        enum: [ "linux", "darwin" ]
         default: "linux"
       arch:
         description: Target architecture
         type: enum
-        enum: ["amd64", "arm64"]
+        enum: [ "amd64", "arm64" ]
         default: "amd64"
     steps:
-      - run: |
-          GOOS=<< parameters.os >> \
-          GOARCH=<< parameters.arch >> \
-          cd cmd/honeyalb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
-          -o $GOPATH/bin/honeyalb-<< parameters.os >>-<< parameters.arch >> \
-          .
-      - run: |
-          GOOS=<< parameters.os >> \
-          GOARCH=<< parameters.arch >> \
-          cd cmd/honeyelb && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
-          -o $GOPATH/bin/honeyelb-<< parameters.os >>-<< parameters.arch >> \
-          .
-      - run: |
-          GOOS=<< parameters.os >> \
-          GOARCH=<< parameters.arch >> \
-          cd cmd/honeycloudfront && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
-          -o $GOPATH/bin/honeycloudfront-<< parameters.os >>-<< parameters.arch >> \
-          .
-      - run: |
-          GOOS=<< parameters.os >> \
-          GOARCH=<< parameters.arch >> \
-          cd cmd/honeycloudtrail && go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
-          -o $GOPATH/bin/honeycloudtrail-<< parameters.os >>-<< parameters.arch >> \
-          .
+      - run:
+          working_directory: ~/project/cmd/honeyalb
+          environment:
+            GOOS: << parameters.os >>
+            GOARCH: << parameters.arch >>
+          command: |
+            go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+            -o $GOPATH/bin/honeyalb-<< parameters.os >>-<< parameters.arch >> \
+            .
+      - run:
+          working_directory: ~/project/cmd/honeyelb
+          environment:
+            GOOS: << parameters.os >>
+            GOARCH: << parameters.arch >>
+          command: |
+            go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+            -o $GOPATH/bin/honeyelb-<< parameters.os >>-<< parameters.arch >> \
+            .
+      - run:
+          working_directory: ~/project/cmd/honeycloudfront
+          environment:
+            GOOS: << parameters.os >>
+            GOARCH: << parameters.arch >>
+          command: |
+            go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+            -o $GOPATH/bin/honeycloudfront-<< parameters.os >>-<< parameters.arch >> \
+            .
+      - run:
+          working_directory: ~/project/cmd/honeycloudtrail
+          environment:
+            GOOS: << parameters.os >>
+            GOARCH: << parameters.arch >>
+          command: |
+            go build -ldflags "-X main.BuildID=${CIRCLE_TAG}" \
+            -o $GOPATH/bin/honeycloudtrail-<< parameters.os >>-<< parameters.arch >> \
+            .
 
 jobs:
   build:
