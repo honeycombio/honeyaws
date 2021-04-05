@@ -3,7 +3,7 @@ module github.com/honeycombio/honeyaws
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.37.15
+	github.com/aws/aws-sdk-go v1.38.12
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/honeycombio/dynsampler-go v0.2.1
 	github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c // indirect
