@@ -1,5 +1,7 @@
 ## Honeycomb AWS Bundle [![CircleCI](https://circleci.com/gh/honeycombio/honeyaws.svg?style=svg)](https://circleci.com/gh/honeycombio/honeyaws)
 
+[![OSS Lifecycle](https://img.shields.io/osslifecycle/honeycombio/REPO)](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md)
+
 `honeyaws` is a collection of programs to send events from your AWS
 infrastructure into [Honeycomb](https://www.honeycomb.io/), a service
 for debugging your software in production.
