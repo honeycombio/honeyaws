@@ -9,7 +9,7 @@ require (
 	github.com/honeycombio/honeytail v1.3.0
 	github.com/honeycombio/libhoney-go v1.15.4
 	github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f
-	github.com/jessevdk/go-flags v1.4.0
+	github.com/jessevdk/go-flags v1.5.0
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 )
