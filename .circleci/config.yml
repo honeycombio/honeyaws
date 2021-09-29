@@ -144,9 +144,10 @@ jobs:
           name: "Build and publish multi-arch docker image"
           command: |
             export DOCKER_CLI_EXPERIMENTAL=enabled
+            docker buildx create --name mybuilder --use
             echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin;
             docker buildx build \
-              --platform linux/amd64,linux/arm64,darwin/amd64 \
+              --platform linux/amd64,linux/arm64 \
               -t honeycombio/honeyaws:latest \
               -t honeycombio/honeyaws:${CIRCLE_TAG} \
               --push \
