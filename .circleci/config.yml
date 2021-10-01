@@ -135,22 +135,21 @@ jobs:
     docker:
       - image: circleci/golang:1.13
     steps:
+      - restore_cache:
+          keys:
+            googkleko
+      - run: go install github.com/google/ko@latest
+      - save_cache:
+          key: googkleko
+          paths:
+            - $GOPATH/bin/ko
       - checkout
-      # use specific docker version to get access to buildx:
-      # https://support.circleci.com/hc/en-us/articles/360058095471-How-To-Use-Docker-Buildx-in-Remote-Docker
-      - setup_remote_docker:
-          version: 19.03.14
+      - setup_remote_docker
       - run:
           name: "Build and publish multi-arch docker image"
           command: |
-            export DOCKER_CLI_EXPERIMENTAL=enabled
-            docker buildx create --name mybuilder --use
             echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin;
-            docker buildx build \
-              --platform linux/amd64,linux/arm64 \
-              -t honeycombio/honeyaws:latest \
-              -t honeycombio/honeyaws:${CIRCLE_TAG} \
-              .
+            build/build_docker.sh
 
 workflows:
   version: 2
