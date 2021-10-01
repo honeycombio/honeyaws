@@ -143,7 +143,7 @@ jobs:
       - restore_cache:
           keys:
             googkleko
-      - run: go get github.com/google/ko
+      - run: go install github.com/google/ko@latest
       - save_cache:
           key: googkleko
           paths:
