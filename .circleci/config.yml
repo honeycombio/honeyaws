@@ -150,7 +150,6 @@ jobs:
               --platform linux/amd64,linux/arm64 \
               -t honeycombio/honeyaws:latest \
               -t honeycombio/honeyaws:${CIRCLE_TAG} \
-              --push \
               .
 
 workflows:
@@ -193,6 +192,4 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
+              only: /.*/
