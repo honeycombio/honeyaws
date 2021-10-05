@@ -1,6 +1,7 @@
 package logbucket
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,12 @@ const (
 	alb                       = "alb"
 	elb                       = "elb"
 )
+
+type LogbucketData struct {
+	BucketName   string
+	BucketPrefix string
+	CancelFn     context.CancelFunc
+}
 
 type ObjectDownloader interface {
 	fmt.Stringer
@@ -233,7 +240,7 @@ func (d *Downloader) accessLogBucketPageCallback(processedObjects map[string]tim
 
 	return true
 }
-func (d *Downloader) pollObjects() {
+func (d *Downloader) pollObjects(ctx context.Context) {
 	// get new logs every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute).C
 
@@ -241,37 +248,45 @@ func (d *Downloader) pollObjects() {
 
 	// Start the loop to continually ingest access logs.
 	for {
-		// For now, get objects for just today.
-		totalPrefix := d.ObjectPrefix(time.Now().UTC())
+		select {
+		// TODO: ismith instant first tick
+		case <-ticker:
+			// For now, get objects for just today.
+			totalPrefix := d.ObjectPrefix(time.Now().UTC())
 
-		logrus.WithFields(logrus.Fields{
-			"prefix": totalPrefix,
-			"entity": d.String(),
-		}).Info("Getting recent objects")
+			logrus.WithFields(logrus.Fields{
+				"prefix": totalPrefix,
+				"entity": d.String(),
+			}).Info("Getting recent objects")
 
-		processedObjects, err := d.ProcessedObjects()
-		if err != nil {
-			logrus.Error(err)
+			processedObjects, err := d.ProcessedObjects()
+			if err != nil {
+				logrus.Error(err)
+			}
+
+			cb := func(bucketResp *s3.ListObjectsOutput, lastPage bool) bool {
+				return d.accessLogBucketPageCallback(processedObjects, bucketResp, lastPage)
+			}
+
+			if err := s3svc.ListObjectsPages(&s3.ListObjectsInput{
+				Bucket: aws.String(d.Bucket()),
+				Prefix: aws.String(totalPrefix),
+			}, cb); err != nil {
+				fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
+				os.Exit(1)
+			}
+			logrus.WithField("entity", d.String()).Info("Bucket polling paused until the next set of logs are available")
+		case <-ctx.Done():
+			// If we're here, we've received a cancellation (via the context) _and_ we
+			// know there's no more logs to pull, because we just pulled them. (Unless
+			// there's a delay putting logs in the bucket from the ALB.)
+			return
 		}
-
-		cb := func(bucketResp *s3.ListObjectsOutput, lastPage bool) bool {
-			return d.accessLogBucketPageCallback(processedObjects, bucketResp, lastPage)
-		}
-
-		if err := s3svc.ListObjectsPages(&s3.ListObjectsInput{
-			Bucket: aws.String(d.Bucket()),
-			Prefix: aws.String(totalPrefix),
-		}, cb); err != nil {
-			fmt.Fprintln(os.Stderr, "Error listing/paging bucket objects: ", err)
-			os.Exit(1)
-		}
-		logrus.WithField("entity", d.String()).Info("Bucket polling paused until the next set of logs are available")
-		<-ticker
 	}
 }
 
-func (d *Downloader) Download(downloadedObjects chan state.DownloadedObject) {
+func (d *Downloader) Download(ctx context.Context, downloadedObjects chan state.DownloadedObject) {
 	d.DownloadedObjects = downloadedObjects
-	go d.pollObjects()
+	go d.pollObjects(ctx)
 	go d.downloadObjects()
 }

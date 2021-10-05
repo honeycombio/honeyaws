@@ -12,7 +12,8 @@ type Options struct {
 	SamplerInterval int     `long:"sampler_interval" default:"300" description:"Interval between sample rate calculation, in seconds."`
 	SamplerDecay    float64 `long:"sampler_decay" default:"0.5" description:"Used only when sampler_type is set to 'ema'. A value between (0,1) that controls how fast new observations are factored into the moving average. Larger values mean the sample rates are more sensitive to recent observations."`
 
-	Version bool   `short:"V" long:"version" description:"Show version"`
-	APIHost string `hidden:"true" long:"api_host" description:"Host for the Honeycomb API" default:"https://api.honeycomb.io/"`
-	Debug   bool   `long:"debug" description:"Print debugging output"`
+	Version                       bool   `short:"V" long:"version" description:"Show version"`
+	APIHost                       string `hidden:"true" long:"api_host" description:"Host for the Honeycomb API" default:"https://api.honeycomb.io/"`
+	Debug                         bool   `long:"debug" description:"Print debugging output"`
+	PollNewSourcesIntervalSeconds int    `long:"poll-new-sources-seconds" "Period (in seconds) to poll for new sources. Implies that the list of sources is (a) non-empty, (b) regular expressions, not exact strings"`
 }

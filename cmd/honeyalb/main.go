@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
@@ -16,12 +17,14 @@ import (
 	"github.com/honeycombio/honeyaws/state"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 )
 
 var (
 	opt        = &options.Options{}
 	BuildID    string
 	versionStr string
+	logbuckets map[string]logbucket.LogbucketData
 )
 
 func init() {
@@ -34,6 +37,145 @@ func init() {
 
 	// init libhoney user agent properly
 	libhoney.UserAgentAddition = "honeyalb/" + versionStr
+
+	logbuckets = make(map[string]logbucket.LogbucketData)
+}
+
+func addMatchingALBsToMap(elbSvc *elbv2.ELBV2, regexStrs []string) {
+	regexes := []*regexp.Regexp{}
+	for _, regex := range regexStrs {
+		regexes = append(regexes, regexp.MustCompile(fmt.Sprintf("^%s$", regex)))
+	}
+
+	// paginate and regex
+	elbSvc.DescribeLoadBalancersPages(&elbv2.DescribeLoadBalancersInput{},
+		func(page *elbv2.DescribeLoadBalancersOutput, lastPage bool) bool {
+			for _, lb := range page.LoadBalancers {
+				name := *lb.LoadBalancerName
+				for _, regex := range regexes {
+					if _, ok := logbuckets[name]; !ok && regex.MatchString(name) {
+						lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
+							LoadBalancerArn: lb.LoadBalancerArn,
+						})
+						if err != nil {
+							fmt.Fprintln(os.Stderr, err)
+							os.Exit(1)
+						}
+
+						var enabled = false
+						var bucketName string
+						var bucketPrefix string
+						for _, element := range lbArnResp.Attributes {
+							if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
+
+								// We're appending lbNames that:
+								// - match one of the given regexes and
+								// - has access_logs.s3.enabled
+								enabled = true
+							}
+							if *element.Key == "access_logs.s3.bucket" {
+								bucketName = *element.Value
+							}
+							if *element.Key == "access_logs.s3.prefix" {
+								bucketPrefix = *element.Value
+							}
+						}
+
+						if enabled {
+							logbuckets[name] = logbucket.LogbucketData{
+								BucketName:   bucketName,
+								BucketPrefix: bucketPrefix,
+								CancelFn:     nil,
+							}
+						} else {
+							fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
+
+For reference see this link:
+
+http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
+`, name)
+						}
+						break
+					}
+				}
+			}
+			return !lastPage
+		})
+}
+
+func startDownloaders(sess *session.Session, stater state.Stater, downloadsCh chan (state.DownloadedObject)) {
+	for name, data := range logbuckets {
+		if data.CancelFn == nil {
+			albDownloader := logbucket.NewALBDownloader(sess, data.BucketName, data.BucketPrefix, name)
+			downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
+
+			ctx, cancelFn := context.WithCancel(context.Background())
+			data = logbuckets[name]
+			data.CancelFn = cancelFn
+			go downloader.Download(ctx, downloadsCh)
+		}
+	}
+}
+
+func removeALBsFromMap(elbSvc *elbv2.ELBV2) {
+	for name, _ := range logbuckets {
+		lbNameResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
+			Names: []*string{
+				aws.String(name),
+			},
+		})
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			continue // hopefully it's a transient error?
+		}
+
+		remove := false
+
+		if len(lbNameResp.LoadBalancers) == 0 {
+			remove = true
+		} else {
+			lbArn := lbNameResp.LoadBalancers[0].LoadBalancerArn
+			lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
+				LoadBalancerArn: lbArn,
+			})
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				continue // hopefully it's a transient error?
+			}
+
+			var enabled = false
+			var bucketName string
+			var bucketPrefix string
+			for _, element := range lbArnResp.Attributes {
+				if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
+
+					// We're appending lbNames that:
+					// - match one of the given regexes and
+					// - has access_logs.s3.enabled
+					enabled = true
+				}
+				if *element.Key == "access_logs.s3.bucket" {
+					bucketName = *element.Value
+				}
+				if *element.Key == "access_logs.s3.prefix" {
+					bucketPrefix = *element.Value
+				}
+			}
+
+			// if logs are no longer enabled, _or_ they're being sent somewhere else
+			// now, remove it from the map.
+			remove = !enabled || bucketName != logbuckets[name].BucketName ||
+				bucketPrefix != logbuckets[name].BucketPrefix
+		}
+
+		if remove {
+			if logbucketData, ok := logbuckets[name]; ok {
+				logbucketData.CancelFn()
+				delete(logbuckets, name)
+			}
+		}
+	}
 }
 
 func cmdALB(args []string) error {
@@ -66,14 +208,10 @@ func cmdALB(args []string) error {
 Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
-			lbNames := args[1:]
-
-			// Use all available load balancers by default if none
-			// are provided.
-			if len(lbNames) == 0 {
-				for _, lb := range describeLBResp.LoadBalancers {
-					lbNames = append(lbNames, *lb.LoadBalancerName)
-				}
+			lbNameRegexes := args[1:]
+			// no args? Slurp it all.
+			if len(lbNameRegexes) == 0 {
+				lbNameRegexes = []string{".*"}
 			}
 
 			var stater state.Stater
@@ -97,71 +235,6 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewALBEventParser(opt))
 			downloadsCh := make(chan state.DownloadedObject)
 
-			// For now, just run one goroutine per-LB
-			for _, lbName := range lbNames {
-				logrus.WithFields(logrus.Fields{
-					"lbName": lbName,
-				}).Info("Attempting to ingest ALB")
-
-				elbSvc := elbv2.New(sess, nil)
-
-				lbNameResp, err := elbSvc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{
-					Names: []*string{
-						aws.String(lbName),
-					},
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
-
-				lbArn := lbNameResp.LoadBalancers[0].LoadBalancerArn
-				lbArnResp, err := elbSvc.DescribeLoadBalancerAttributes(&elbv2.DescribeLoadBalancerAttributesInput{
-					LoadBalancerArn: lbArn,
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
-				}
-
-				enabled := false
-				bucketName := ""
-				bucketPrefix := ""
-
-				for _, element := range lbArnResp.Attributes {
-					if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
-						enabled = true
-					}
-					if *element.Key == "access_logs.s3.bucket" {
-						bucketName = *element.Value
-					}
-					if *element.Key == "access_logs.s3.prefix" {
-						bucketPrefix = *element.Value
-					}
-				}
-
-				if !enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
-
-For reference see this link:
-
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
-`, lbName)
-					os.Exit(1)
-				}
-				logrus.WithFields(logrus.Fields{
-					"bucket": bucketName,
-					"lbName": lbName,
-				}).Info("Access logs are enabled for ALB ♥")
-
-				albDownloader := logbucket.NewALBDownloader(sess, bucketName, bucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
-
-				// TODO: One-goroutine-per-LB feels a bit
-				// silly.
-				go downloader.Download(downloadsCh)
-			}
-
 			signalCh := make(chan os.Signal)
 			signal.Notify(signalCh, os.Interrupt)
 
@@ -170,13 +243,34 @@ http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer
 				logrus.Fatal("Exiting due to interrupt.")
 			}()
 
+			var tickerChan (<-chan (time.Time))
+			// if this value is 0, time.NewTicker would panic - but then the desired
+			// behavior is not to re-poll, so a channel that never receives is fine.
+			if opt.PollNewSourcesIntervalSeconds == 0 {
+				tickerChan = make(<-chan (time.Time))
+			} else {
+				ticker := time.NewTicker(time.Duration(opt.PollNewSourcesIntervalSeconds) * time.Second)
+				tickerChan = ticker.C
+			}
+
+			// initial run, no delay
+			removeALBsFromMap(elbSvc)
+			addMatchingALBsToMap(elbSvc, lbNameRegexes)
+			startDownloaders(sess, stater, downloadsCh)
+
 			for {
-				download := <-downloadsCh
-				if err := defaultPublisher.Publish(download); err != nil {
-					logrus.WithFields(logrus.Fields{
-						"object": download,
-						"error":  err,
-					}).Error("Cannot properly publish downloaded object")
+				select {
+				case <-tickerChan:
+					removeALBsFromMap(elbSvc)
+					addMatchingALBsToMap(elbSvc, lbNameRegexes)
+					startDownloaders(sess, stater, downloadsCh)
+				case download := <-downloadsCh:
+					if err := defaultPublisher.Publish(download); err != nil {
+						logrus.WithFields(logrus.Fields{
+							"object": download,
+							"error":  err,
+						}).Error("Cannot properly publish downloaded object")
+					}
 				}
 			}
 		}
