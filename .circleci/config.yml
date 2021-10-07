@@ -137,24 +137,42 @@ jobs:
           name: sync_s3_artifacts
           command: aws s3 sync ~/artifacts s3://honeycomb-builds/honeycombio/honeyaws/${CIRCLE_TAG}/
 
-  publish_docker:
-    executor: linuxgo
+  build_docker:
+    docker:
+      - image: cimg/go:1.16
     steps:
-      - restore_cache:
-          keys:
-            googleko
       - run: go install github.com/google/ko@latest
-      - save_cache:
-          key: googleko
-          paths:
-            - $GOPATH/bin/ko
       - checkout
       - setup_remote_docker
-      - run:
-          name: "Build and publish multi-arch docker image"
-          command: |
-            echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin;
-            build/build_docker.sh
+      - run: ./build-docker.sh
+      - run: mkdir -p ~/images
+      - run: docker save honeycombio/honeyalb | gzip > ~/images/honeyalb.tar.gz
+      - run: docker save honeycombio/honeycloudfront | gzip > ~/images/honeycloudfront.tar.gz
+      - run: docker save honeycombio/honeycloudtrail | gzip > ~/images/honeycloudtrail.tar.gz
+      - run: docker save honeycombio/honeyelb | gzip > ~/images/honeyelb.tar.gz
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - images
+      - store_artifacts:
+          path: ~/images
+
+  publish_docker:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - attach_workspace:
+          at: ~/
+      - setup_remote_docker
+      - run: docker load -i ~/images/honeyalb.tar.gz
+      - run: docker load -i ~/images/honeycloudfront.tar.gz
+      - run: docker load -i ~/images/honeycloudtrail.tar.gz
+      - run: docker load -i ~/images/honeyelb.tar.gz
+      - run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin;
+      - run: docker image push -a honeycombio/honeyalb
+      - run: docker image push -a honeycombio/honeycloudfront
+      - run: docker image push -a honeycombio/honeycloudtrail
+      - run: docker image push -a honeycombio/honeyelb
 
 workflows:
   version: 2
@@ -172,6 +190,12 @@ workflows:
               only: /^v[0-9].*/
             branches:
               ignore: /.*/
+      - build_docker:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
       - publish_github:
           context: Honeycomb Secrets for Public Repos
           requires:
@@ -204,7 +228,9 @@ workflows:
       - publish_docker:
           context: Honeycomb Secrets for Public Repos
           requires:
-            - build
+            - build_docker
           filters:
             tags:
-              only: /.*/
+              only: /^v.*/
+            branches:
+              ignore: /.*/
