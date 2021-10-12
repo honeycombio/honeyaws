@@ -144,35 +144,22 @@ jobs:
       - run: go install github.com/google/ko@latest
       - checkout
       - setup_remote_docker
-      - run: ./build-docker.sh
-      - run: mkdir -p ~/images
-      - run: docker save honeycombio/honeyalb | gzip > ~/images/honeyalb.tar.gz
-      - run: docker save honeycombio/honeycloudfront | gzip > ~/images/honeycloudfront.tar.gz
-      - run: docker save honeycombio/honeycloudtrail | gzip > ~/images/honeycloudtrail.tar.gz
-      - run: docker save honeycombio/honeyelb | gzip > ~/images/honeyelb.tar.gz
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - images
-      - store_artifacts:
-          path: ~/images
+      - run:
+          name: build docker images and publish locally
+          command: ./build-docker.sh
 
   publish_docker:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/go:1.16
     steps:
-      - attach_workspace:
-          at: ~/
+      - run: go install github.com/google/ko@latest
+      - checkout
       - setup_remote_docker
-      - run: docker load -i ~/images/honeyalb.tar.gz
-      - run: docker load -i ~/images/honeycloudfront.tar.gz
-      - run: docker load -i ~/images/honeycloudtrail.tar.gz
-      - run: docker load -i ~/images/honeyelb.tar.gz
-      - run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin;
-      - run: docker image push -a honeycombio/honeyalb
-      - run: docker image push -a honeycombio/honeycloudfront
-      - run: docker image push -a honeycombio/honeycloudtrail
-      - run: docker image push -a honeycombio/honeyelb
+      - run:
+          name: build docker images and publish to Docker Hub
+          environment:
+            KO_DOCKER_REPO: honeycombio
+          command: ./build-docker.sh
 
 workflows:
   version: 2

@@ -13,7 +13,7 @@ fi
 
 unset GOOS
 unset GOARCH
-export KO_DOCKER_REPO="ko.local"
+export KO_DOCKER_REPO=${KO_DOCKER_REPO:-ko.local}
 export GOFLAGS="-ldflags=-X=main.BuildID=$VERSION"
 export SOURCE_DATE_EPOCH=$(date +%s)
 
@@ -25,10 +25,4 @@ do
     --base-import-paths \
     --platform "linux/amd64,linux/arm64" \
     ./cmd/$NAME
-
-  # update tags to use correct org name
-  for TAG in ${TAGS//,/ }
-  do
-    docker image tag ko.local/$NAME honeycombio/$NAME:$TAG
-  done
 done
