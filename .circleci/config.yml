@@ -187,6 +187,7 @@ workflows:
           context: Honeycomb Secrets for Public Repos
           requires:
             - build_packages
+            - build_docker
           filters:
             tags:
               only: /^v[0-9].*/
@@ -196,6 +197,7 @@ workflows:
           context: Honeycomb Secrets for Public Repos
           requires:
             - build_packages
+            - build_docker
           filters:
             tags:
               only: /^v[0-9].*/
@@ -207,6 +209,7 @@ workflows:
           image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
           requires:
             - build_packages
+            - build_docker
           filters:
             tags:
               only: /^v[0-9].*/
@@ -215,6 +218,7 @@ workflows:
       - publish_docker:
           context: Honeycomb Secrets for Public Repos
           requires:
+            - build_packages
             - build_docker
           filters:
             tags:
