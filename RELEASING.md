@@ -5,3 +5,4 @@
 4. Create new tag on merged commit with the new version (e.g. `v1.4.1`)
 5. Push the tag upstream (this will kick off the release pipeline in CI)
 6. Copy change log entry for newest version into draft GitHub release created as part of CI publish steps
+7. Update [public docs](https://github.com/honeycombio/docs/blob/main/scripts)

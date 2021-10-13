@@ -4,11 +4,12 @@
 
 ### Added
 
-- Build and publish multi-arch docker images on tag (#153)
+- Build and publish multi-arch docker images on tag (#153) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
 
 ### Fixes
 
-- Fix building binaries commands so they pick up the GOOS and GOARCH vars (#97)
+- Fix building binaries commands so they pick up the GOOS and GOARCH vars (#97) | [@vreynolds](https://github.com/vreynolds)
+- Login to docker for publish_docker (#159) | [@jamiedanielson](https://github.com/jamiedanielson)
 
 ### Maintenance
 
