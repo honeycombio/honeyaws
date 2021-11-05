@@ -7,7 +7,7 @@ orbs:
 executors:
   linuxgo:
     docker:
-      - image: cimg/go:1.16
+      - image: cimg/go:1.17
         environment:
           GO111MODULE: "on"
 
@@ -138,8 +138,7 @@ jobs:
           command: aws s3 sync ~/artifacts s3://honeycomb-builds/honeycombio/honeyaws/${CIRCLE_TAG}/
 
   build_docker:
-    docker:
-      - image: cimg/go:1.16
+    executor: linuxgo
     steps:
       - run: go install github.com/google/ko@latest
       - checkout
@@ -149,8 +148,7 @@ jobs:
           command: ./build-docker.sh
 
   publish_docker:
-    docker:
-      - image: cimg/go:1.16
+    executor: linuxgo
     steps:
       - run: go install github.com/google/ko@latest
       - checkout
