@@ -1,5 +1,14 @@
 # Honeycomb AWS Changelog
 
+## 1.4.2 2021-11-05
+
+- bump go version to 1.17 (#167)
+- bump libhoney-go (#166)
+- empower apply-labels action to apply labels (#165)
+- Bump github.com/honeycombio/libhoney-go from 1.15.4 to 1.15.5 (#150)
+- Bump github.com/aws/aws-sdk-go from 1.40.47 to 1.41.5 (#161)
+- Typo in publish_docker job (#160)
+
 ## 1.4.1 2021-10-13
 
 ### Added
