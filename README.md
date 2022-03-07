@@ -81,6 +81,8 @@ $ aws cloudformation create-stack --stack-name DynamoDBHoneyAWS \
     --template-body file://cloudformation/dynamoDB.yml
 ```
 
+We also have a [terraform snippet](terraform/dynamodb_table.tf) that you can use.
+
 Once this table is created, you can simply add the `--highavail` flag to
 `honeyelb` or `honeycloudfront`.
 
