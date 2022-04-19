@@ -1,5 +1,19 @@
 # Honeycomb AWS Changelog
 
+## 1.4.3 2022-04-19
+
+### Maintenance
+
+- update go to 1.18 (#186)| [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+  - fixes openSSL CVE (#185)
+- Fix readme instructions and add terraform snippet (#184) | [@martin308](https://github.com/martin308)
+- gh: add re-triage workflow (#176) | [@vreynolds](https://github.com/vreynolds)
+- Update dependabot.yml (#173) | [@vreynolds](https://github.com/vreynolds)
+- Update awsclient orb (#182) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Bump github.com/honeycombio/honeytail from 1.5.0 to 1.6.1 (#169, #179)
+- Bump github.com/honeycombio/libhoney-go from 1.15.6 to 1.15.8 (#180)
+- Bump github.com/aws/aws-sdk-go from 1.41.5 to 1.43.31 (#172, #174, #175, #177, #187)
+
 ## 1.4.2 2021-11-05
 
 - bump go version to 1.17 (#167)
