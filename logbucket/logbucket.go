@@ -28,7 +28,7 @@ const (
 type ObjectDownloader interface {
 	fmt.Stringer
 
-	// ObjectPrefix allows the downloaded to efficiently lookup objects
+	// ObjectPrefix allows the downloader to efficiently lookup objects
 	// based on prefix (unique to each AWS service).
 	ObjectPrefix(day time.Time) string
 
@@ -45,9 +45,14 @@ type Downloader struct {
 	DownloadedObjects chan state.DownloadedObject
 	ObjectsToDownload chan *s3.Object
 	BackfillInterval  time.Duration
+	HomeRegion        string
 }
 
-func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int) *Downloader {
+func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int, homeRegion string) *Downloader {
+	var region string
+	if homeRegion != "" {
+		region = homeRegion
+	}
 	return &Downloader{
 		Stater:            stater,
 		ObjectDownloader:  downloader,
@@ -55,6 +60,7 @@ func NewDownloader(sess *session.Session, stater state.Stater, downloader Object
 		DownloadedObjects: make(chan state.DownloadedObject),
 		ObjectsToDownload: make(chan *s3.Object),
 		BackfillInterval:  time.Hour * time.Duration(backfill),
+		HomeRegion:        region,
 	}
 }
 
@@ -74,11 +80,16 @@ type CloudTrailDownloader struct {
 	Prefix, BucketName, AccountID, Region, TrailID string
 }
 
-func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID string) *CloudTrailDownloader {
+func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID, trailRegion string) *CloudTrailDownloader {
 	metadata := meta.Data(sess)
+	region := metadata.Region
+	// Use the trail's defined HomeRegion if different from session region
+	if trailRegion != "" && trailRegion != metadata.Region {
+		region = trailRegion
+	}
 	return &CloudTrailDownloader{
 		AccountID:  metadata.AccountID,
-		Region:     metadata.Region,
+		Region:     region,
 		BucketName: bucketName,
 		Prefix:     bucketPrefix,
 		TrailID:    trailID,
@@ -237,7 +248,7 @@ func (d *Downloader) pollObjects() {
 	// get new logs every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute).C
 
-	s3svc := s3.New(d.Sess, nil)
+	s3svc := s3.New(d.Sess, aws.NewConfig().WithRegion(d.HomeRegion))
 
 	// Start the loop to continually ingest access logs.
 	for {

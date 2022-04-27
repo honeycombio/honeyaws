@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
@@ -16,6 +15,7 @@ import (
 	"github.com/honeycombio/honeyaws/state"
 	libhoney "github.com/honeycombio/libhoney-go"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -42,6 +42,7 @@ func cmdCloudTrail(args []string) error {
 	// Will just use environment config right now, e.g., default profile.
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
+		//	Profile:
 	}))
 
 	cloudtrailSvc := cloudtrail.New(sess, nil)
@@ -60,6 +61,12 @@ func cmdCloudTrail(args []string) error {
 			}
 			return nil
 
+		case "lsa", "list-arn":
+			for _, trailSummary := range listTrailsResp.TrailList {
+				fmt.Println(*trailSummary.TrailARN)
+			}
+			return nil
+
 		case "ingest":
 			if opt.WriteKey == "" {
 				logrus.Fatal(`--writekey must be set to the proper write key for the Honeycomb team.
@@ -69,8 +76,11 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			trailNames := args[1:]
 
 			if len(trailNames) == 0 {
+				logrus.Info("No trail names provided; fetching all trails")
+				// ARN is required to describe Trails belonging to other regions
+				// https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_DescribeTrails.html
 				for _, trail := range listTrailsResp.TrailList {
-					trailNames = append(trailNames, *trail.Name)
+					trailNames = append(trailNames, *trail.TrailARN)
 				}
 			}
 
@@ -86,6 +96,8 @@ Your write key is available at https://ui.honeycomb.io/account`)
 				logrus.Fatal(`No valid trails listed. Try using ls to list available trails or refer to the README.`)
 				os.Exit(1)
 			}
+
+			logrus.Debugf("Will attempt to ingest logs for %d trails", len(trailListResp.TrailList))
 
 			var stater state.Stater
 
@@ -134,8 +146,8 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 					"prefix": prefix,
 				}).Info("Access logs are enabled for CloudTrail trails")
 
-				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(sess, *s3Bucket, prefix, *trail.TrailARN)
-				downloader := logbucket.NewDownloader(sess, stater, cloudtrailDownloader, opt.BackfillHr)
+				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(sess, *s3Bucket, prefix, *trail.TrailARN, *trail.HomeRegion)
+				downloader := logbucket.NewDownloader(sess, stater, cloudtrailDownloader, opt.BackfillHr, *trail.HomeRegion)
 				go downloader.Download(downloadsCh)
 			}
 
@@ -195,7 +207,7 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|ingest] [CloudTrail distribution IDs...]
+		fmt.Fprintln(os.Stderr, `Usage: `+os.Args[0]+` [--flags] [ls|lsa|ingest] [CloudTrail distribution IDs...]
 
 Use '`+os.Args[0]+` --help' to see available flags.`)
 		os.Exit(1)
