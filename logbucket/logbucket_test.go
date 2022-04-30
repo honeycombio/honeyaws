@@ -39,6 +39,14 @@ func TestObjectPrefixes(t *testing.T) {
 			Prefix:     "",
 			TrailID:    "MADEUP0",
 		}, "AWSLogs/12345/CloudTrail/us-east-1/2018/08/20/12345_CloudTrail_us-east-1"},
+		{&CloudTrailDownloader{
+			AccountID:  "12345",
+			Region:     "us-east-1",
+			BucketName: "myorganizationlogs",
+			Prefix:     "",
+			TrailID:    "MADEUP0",
+			OrgID:      "o-FakeOrgID",
+		}, "AWSLogs/o-FakeOrgID/12345/CloudTrail/us-east-1/2018/08/20/12345_CloudTrail_us-east-1"},
 	}
 
 	for _, testCase := range testCases {

@@ -45,14 +45,9 @@ type Downloader struct {
 	DownloadedObjects chan state.DownloadedObject
 	ObjectsToDownload chan *s3.Object
 	BackfillInterval  time.Duration
-	HomeRegion        string
 }
 
-func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int, homeRegion string) *Downloader {
-	var region string
-	if homeRegion != "" {
-		region = homeRegion
-	}
+func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int) *Downloader {
 	return &Downloader{
 		Stater:            stater,
 		ObjectDownloader:  downloader,
@@ -60,7 +55,6 @@ func NewDownloader(sess *session.Session, stater state.Stater, downloader Object
 		DownloadedObjects: make(chan state.DownloadedObject),
 		ObjectsToDownload: make(chan *s3.Object),
 		BackfillInterval:  time.Hour * time.Duration(backfill),
-		HomeRegion:        region,
 	}
 }
 
@@ -77,29 +71,29 @@ type CloudFrontDownloader struct {
 }
 
 type CloudTrailDownloader struct {
-	Prefix, BucketName, AccountID, Region, TrailID string
+	Prefix, BucketName, AccountID, Region, TrailID, OrgID string
 }
 
-func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID, trailRegion string) *CloudTrailDownloader {
+func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID, orgID string) *CloudTrailDownloader {
 	metadata := meta.Data(sess)
-	region := metadata.Region
-	// Use the trail's defined HomeRegion if different from session region
-	if trailRegion != "" && trailRegion != metadata.Region {
-		region = trailRegion
-	}
 	return &CloudTrailDownloader{
 		AccountID:  metadata.AccountID,
-		Region:     region,
+		Region:     metadata.Region,
 		BucketName: bucketName,
 		Prefix:     bucketPrefix,
 		TrailID:    trailID,
+		OrgID:      orgID,
 	}
 
 }
 
+// ObjectPrefix handles formatting the Trail log s3 path properly,
+// including the optional user-created prefix, and the organization
+// unit ID used for Organization Cloud Trail logs if provided:
+// https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-find-log-files.html
 func (d *CloudTrailDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("2006/01/02")
-	return filepath.Join(d.Prefix, "AWSLogs", d.AccountID, "CloudTrail",
+	return filepath.Join(d.Prefix, "AWSLogs", d.OrgID, d.AccountID, "CloudTrail",
 		d.Region, dayPath, d.AccountID+"_CloudTrail_"+d.Region)
 }
 
@@ -229,6 +223,7 @@ func (d *Downloader) accessLogBucketPageCallback(processedObjects map[string]tim
 		}
 
 		if time.Since(*obj.LastModified) < d.BackfillInterval {
+			// Note: this marks an object as processed even if the download fails
 			if err := d.SetProcessed(*obj.Key); err != nil {
 				logrus.Debug("Error setting state of object as processed: ", *obj.Key)
 				continue
@@ -248,7 +243,8 @@ func (d *Downloader) pollObjects() {
 	// get new logs every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute).C
 
-	s3svc := s3.New(d.Sess, aws.NewConfig().WithRegion(d.HomeRegion))
+	logrus.Debugf("Polling objects in region %s", *d.Sess.Config.Region)
+	s3svc := s3.New(d.Sess, nil)
 
 	// Start the loop to continually ingest access logs.
 	for {

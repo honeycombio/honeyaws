@@ -42,7 +42,6 @@ func cmdCloudTrail(args []string) error {
 	// Will just use environment config right now, e.g., default profile.
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
-		//	Profile:
 	}))
 
 	cloudtrailSvc := cloudtrail.New(sess, nil)
@@ -77,10 +76,16 @@ Your write key is available at https://ui.honeycomb.io/account`)
 
 			if len(trailNames) == 0 {
 				logrus.Info("No trail names provided; fetching all trails")
-				// ARN is required to describe Trails belonging to other regions
-				// https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_DescribeTrails.html
 				for _, trail := range listTrailsResp.TrailList {
-					trailNames = append(trailNames, *trail.TrailARN)
+					var trailID string
+					// ARN is required to describe Trails belonging to other regions
+					// https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_DescribeTrails.html
+					if opt.MultiRegion {
+						trailID = *trail.TrailARN
+					} else {
+						trailID = *trail.Name
+					}
+					trailNames = append(trailNames, trailID)
 				}
 			}
 
@@ -146,8 +151,10 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 					"prefix": prefix,
 				}).Info("Access logs are enabled for CloudTrail trails")
 
-				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(sess, *s3Bucket, prefix, *trail.TrailARN, *trail.HomeRegion)
-				downloader := logbucket.NewDownloader(sess, stater, cloudtrailDownloader, opt.BackfillHr, *trail.HomeRegion)
+				// The trail's region may differ from the main session's, so use trail's HomeRegion for download
+				rsess := sess.Copy(aws.NewConfig().WithRegion(*trail.HomeRegion))
+				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(rsess, *s3Bucket, prefix, *trail.TrailARN, opt.OrganizationID)
+				downloader := logbucket.NewDownloader(rsess, stater, cloudtrailDownloader, opt.BackfillHr)
 				go downloader.Download(downloadsCh)
 			}
 
@@ -195,6 +202,13 @@ func main() {
 
 	if opt.Dataset == "aws-$SERVICE-access" {
 		opt.Dataset = "aws-cloudtrail-access"
+	}
+	if opt.OrganizationID != "" {
+		logrus.Info("Organization ID provided, assuming Organization Cloud Trail")
+	}
+
+	if opt.MultiRegion {
+		logrus.Info("Multiregion set, will find trails in all regions")
 	}
 
 	if _, err := os.Stat(opt.StateDir); os.IsNotExist(err) {
