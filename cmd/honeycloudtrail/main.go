@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/honeycombio/honeyaws/logbucket"
@@ -44,7 +46,15 @@ func cmdCloudTrail(args []string) error {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	cloudtrailSvc := cloudtrail.New(sess, nil)
+	// Assume role if set
+	var cfg *aws.Config
+	var creds *credentials.Credentials
+	if roleArn := os.Getenv("HONEYCLOUDTRAIL_ROLE_ARN"); roleArn != "" {
+		creds = stscreds.NewCredentials(sess, roleArn)
+		logrus.Debugf("Running as role %s", roleArn)
+		cfg = &aws.Config{Credentials: creds}
+	}
+	cloudtrailSvc := cloudtrail.New(sess, cfg)
 
 	listTrailsResp, err := cloudtrailSvc.DescribeTrails(&cloudtrail.DescribeTrailsInput{})
 
@@ -111,6 +121,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			if opt.HighAvail {
+				// TODO: support assume role
 				stater, err = state.NewDynamoDBStater(sess, opt.BackfillHr)
 				if err != nil {
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
@@ -152,7 +163,11 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 				}).Info("Access logs are enabled for CloudTrail trails")
 
 				// The trail's region may differ from the main session's, so use trail's HomeRegion for download
-				rsess := sess.Copy(aws.NewConfig().WithRegion(*trail.HomeRegion))
+				awsConf := aws.NewConfig().WithRegion(*trail.HomeRegion)
+				if creds != nil {
+					awsConf.WithCredentials(creds)
+				}
+				rsess := sess.Copy(awsConf)
 				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(rsess, *s3Bucket, prefix, *trail.TrailARN, opt.OrganizationID)
 				downloader := logbucket.NewDownloader(rsess, stater, cloudtrailDownloader, opt.BackfillHr)
 				go downloader.Download(downloadsCh)
