@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/honeycombio/honeyaws/logbucket"
+	"github.com/honeycombio/honeyaws/meta"
 	"github.com/honeycombio/honeyaws/options"
 	"github.com/honeycombio/honeyaws/publisher"
 	"github.com/honeycombio/honeyaws/state"
@@ -41,20 +42,18 @@ func init() {
 func cmdCloudTrail(args []string) error {
 	// TODO: Would be nice to have this more highly configurable.
 	//
-	// Will just use environment config right now, e.g., default profile.
+	// Start with default profile.
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
 	// Assume role if set
-	var cfg *aws.Config
-	var creds *credentials.Credentials
 	if roleArn := os.Getenv("HONEYCLOUDTRAIL_ROLE_ARN"); roleArn != "" {
-		creds = stscreds.NewCredentials(sess, roleArn)
+		creds := stscreds.NewCredentials(sess, roleArn)
 		logrus.Debugf("Running as role %s", roleArn)
-		cfg = &aws.Config{Credentials: creds}
+		sess = sess.Copy(aws.NewConfig().WithCredentials(creds))
 	}
-	cloudtrailSvc := cloudtrail.New(sess, cfg)
+	cloudtrailSvc := cloudtrail.New(sess, nil)
 
 	listTrailsResp, err := cloudtrailSvc.DescribeTrails(&cloudtrail.DescribeTrailsInput{})
 
@@ -121,7 +120,6 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			}
 
 			if opt.HighAvail {
-				// TODO: support assume role
 				stater, err = state.NewDynamoDBStater(sess, opt.BackfillHr)
 				if err != nil {
 					logrus.WithField("tableName", state.DynamoTableName).Fatal("--highavail requires an existing DynamoDB table named appropriately, please refer to the README.")
@@ -137,10 +135,9 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			downloadsCh := make(chan state.DownloadedObject)
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudTrailEventParser(opt))
 
+			trlHandler := NewTrailHandler(sess, stater, downloadsCh)
+
 			for _, trail := range trailListResp.TrailList {
-
-				var prefix string
-
 				s3Bucket := trail.S3BucketName
 				// we want to check if the field is null
 				if s3Bucket == nil {
@@ -152,25 +149,8 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 
 					os.Exit(1)
 				}
-				if trail.S3KeyPrefix == nil {
-					prefix = ""
-				} else {
-					prefix = *trail.S3KeyPrefix
-				}
-				logrus.WithFields(logrus.Fields{
-					"name":   *trail.Name,
-					"prefix": prefix,
-				}).Info("Access logs are enabled for CloudTrail trails")
 
-				// The trail's region may differ from the main session's, so use trail's HomeRegion for download
-				awsConf := aws.NewConfig().WithRegion(*trail.HomeRegion)
-				if creds != nil {
-					awsConf.WithCredentials(creds)
-				}
-				rsess := sess.Copy(awsConf)
-				cloudtrailDownloader := logbucket.NewCloudTrailDownloader(rsess, *s3Bucket, prefix, *trail.TrailARN, opt.OrganizationID)
-				downloader := logbucket.NewDownloader(rsess, stater, cloudtrailDownloader, opt.BackfillHr)
-				go downloader.Download(downloadsCh)
+				trlHandler.IngestCloudTrail(trail)
 			}
 
 			signalCh := make(chan os.Signal)
@@ -189,9 +169,7 @@ https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and
 					}).Error("Cannot properly publish downloaded object")
 				}
 			}
-
 		}
-
 	}
 
 	return fmt.Errorf("Subcommand %q not recognized", args[0])
@@ -245,5 +223,88 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 	if err := cmdCloudTrail(args); err != nil {
 		fmt.Fprintln(os.Stderr, "Error: ", err)
 		os.Exit(1)
+	}
+}
+
+type TrailHandler struct {
+	accountsOverride []string
+	regionsOverride  []string
+	sess             *session.Session
+	stater           state.Stater
+	downloadsCh      chan state.DownloadedObject
+}
+
+func NewTrailHandler(s *session.Session, st state.Stater, downloadsCh chan state.DownloadedObject) TrailHandler {
+	ce := TrailHandler{
+		sess:        s,
+		stater:      st,
+		downloadsCh: downloadsCh,
+	}
+
+	// For Organization or multiregion Trails, determine if trail logs for
+	// specific account ids and regions outside the default session should be collected
+	if rawRegions := os.Getenv("HONEYCLOUDTRAIL_COLLECT_REGIONS"); rawRegions != "" {
+		ce.regionsOverride = strings.Split(rawRegions, ",")
+	}
+	if rawAccounts := os.Getenv("HONEYCLOUDTRAIL_COLLECT_ACCOUNTS"); rawAccounts != "" {
+		ce.accountsOverride = strings.Split(rawAccounts, ",")
+	}
+	return ce
+}
+
+// AccountPathsToIngest handles what account(s) to look for in the s3 path
+// when polling and downloading trail objects
+func (c TrailHandler) AccountPathsToIngest(sess *session.Session) []string {
+	// If no overriding accounts provided, use the session values
+	sessionMetaData := meta.Data(sess)
+	if len(c.accountsOverride) == 0 {
+		logrus.Info("No accounts specified, using session account id for object download")
+		return []string{sessionMetaData.AccountID}
+	}
+	return c.accountsOverride
+}
+
+// RegionPathsToIngest handles what region(s) to look for in the s3 path
+// when polling and downloading trail objects
+func (c TrailHandler) RegionPathsToIngest(sess *session.Session) []string {
+	sessionMetaData := meta.Data(sess)
+	if len(c.regionsOverride) == 0 {
+		logrus.Info("No regions specified, using session region for object download")
+		return []string{sessionMetaData.Region}
+	}
+	return c.regionsOverride
+}
+
+func (c TrailHandler) IngestCloudTrail(trail *cloudtrail.Trail) {
+	var prefix string
+	if trail.S3KeyPrefix == nil {
+		prefix = ""
+	} else {
+		prefix = *trail.S3KeyPrefix
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"name":   *trail.Name,
+		"prefix": prefix,
+	}).Info("Access logs are enabled for CloudTrail trails")
+
+	// The trail's region may differ from the session's region,
+	// so use trail's HomeRegion for accessing s3
+	awsConf := aws.NewConfig().WithRegion(*trail.HomeRegion)
+	rsess := c.sess.Copy(awsConf)
+
+	accounts := c.AccountPathsToIngest(rsess)
+	logrus.Infof("Will fetch objects for account(s): %+v", accounts)
+	regions := c.RegionPathsToIngest(rsess)
+	logrus.Infof("Will fetch objects for region(s): %+v", regions)
+
+	// Create a downloader for each account and region that needs to be collected
+	for _, accountID := range accounts {
+		for _, region := range regions {
+			// Note: this is potentially a lot of concurrent requests to S3 if many accounts / regions are provided
+			cloudtrailDownloader := logbucket.NewCloudTrailDownloader(accountID, region, *trail.S3BucketName, prefix, *trail.TrailARN, opt.OrganizationID)
+			downloader := logbucket.NewDownloader(rsess, c.stater, cloudtrailDownloader, opt.BackfillHr)
+			go downloader.Download(c.downloadsCh)
+		}
 	}
 }

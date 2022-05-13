@@ -74,11 +74,10 @@ type CloudTrailDownloader struct {
 	Prefix, BucketName, AccountID, Region, TrailID, OrgID string
 }
 
-func NewCloudTrailDownloader(sess *session.Session, bucketName, bucketPrefix, trailID, orgID string) *CloudTrailDownloader {
-	metadata := meta.Data(sess)
+func NewCloudTrailDownloader(accountID, region, bucketName, bucketPrefix, trailID, orgID string) *CloudTrailDownloader {
 	return &CloudTrailDownloader{
-		AccountID:  metadata.AccountID,
-		Region:     metadata.Region,
+		AccountID:  accountID,
+		Region:     region,
 		BucketName: bucketName,
 		Prefix:     bucketPrefix,
 		TrailID:    trailID,
