@@ -7,12 +7,14 @@
 infrastructure into [Honeycomb](https://www.honeycomb.io/), a service
 for debugging your software in production.
 
-- `honeyelb` - A tool for ingesting Elastic Load Balancer access logs.
-  ([docs](https://honeycomb.io/docs/connect/aws-elastic-load-balancer))
-- `honeyalb` - A tool for ingesting Application Load Balancer access logs.
-- `honeycloudfront` - A tool for ingesting CloudFront access logs.
-  ([docs](https://honeycomb.io/docs/connect/aws-cloudfront/))
-- `honeycloudtrail` - A tool for ingesting CloudTrail logs.
+-   `honeyelb` - A tool for ingesting Elastic Load Balancer access logs.
+    ([docs](https://honeycomb.io/docs/connect/aws-elastic-load-balancer))
+-   `honeyalb` - A tool for ingesting Application Load Balancer access logs.
+    ([docs](https://docs.honeycomb.io/getting-data-in/integrations/aws/aws-application-load-balancer/))
+-   `honeycloudfront` - A tool for ingesting CloudFront access logs.
+    ([docs](https://honeycomb.io/docs/connect/aws-cloudfront/))
+-   `honeycloudtrail` - A tool for ingesting CloudTrail logs.
+    ([docs](https://docs.honeycomb.io/getting-data-in/integrations/aws/aws-cloudtrail/))
 
 [Usage & Examples](https://docs.honeycomb.io/getting-data-in/integrations/aws/aws-elastic-load-balancer/)
 
@@ -33,7 +35,7 @@ above).
 Ensure that IAM credentials are properly provided where you are invoking the
 tools (e.g., via environment variables) and you have a Honeycomb write key.
 Additionally, you may need to enable access logs, etc., for whichever service
-you wish to ingest information from.  The S3 bucket where they are kept will be
+you wish to ingest information from. The S3 bucket where they are kept will be
 looked up automatically.
 
 Most commands can list the targets for observation (`ls`), as well as invoke
@@ -114,12 +116,12 @@ $ honeyelb --samplerate 20 ...  ingest ...
 You can choose between two implementations of dynamic sampling: `simple` or `ema`.
 Complete details about these implementations can be found [here](https://github.com/honeycombio/dynsampler-go).
 
-- `simple` looks at a single interval of traffic, defined by the `sampler_interval` arg, and computes sample rates
-based on counts of traffic categories seen in that interval. At every interval, the results of the previous interval
-are discarded.
-- `ema` averages observations from each interval into a moving average of counts, and computes sample rates based
-on those counts. Older observations are phased out at a rate specified by `sampler_decay`. Larger decay values mean that
-sample rates are more heavily influenced by newer traffic
+-   `simple` looks at a single interval of traffic, defined by the `sampler_interval` arg, and computes sample rates
+    based on counts of traffic categories seen in that interval. At every interval, the results of the previous interval
+    are discarded.
+-   `ema` averages observations from each interval into a moving average of counts, and computes sample rates based
+    on those counts. Older observations are phased out at a rate specified by `sampler_decay`. Larger decay values mean that
+    sample rates are more heavily influenced by newer traffic
 
 `simple` is suitable for most types of traffic, but we recommend using `ema` if your traffic comes in in bursts.
 
