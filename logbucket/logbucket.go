@@ -41,10 +41,11 @@ type ObjectDownloader interface {
 type Downloader struct {
 	state.Stater
 	ObjectDownloader
-	Sess              *session.Session
-	DownloadedObjects chan state.DownloadedObject
-	ObjectsToDownload chan *s3.Object
-	BackfillInterval  time.Duration
+	Sess               *session.Session
+	DownloadedObjects  chan state.DownloadedObject
+	ObjectsToDownload  chan *s3.Object
+	BackfillInterval   time.Duration
+	ConcurrencyLimiter ConcurrencyLimiter
 }
 
 func NewDownloader(sess *session.Session, stater state.Stater, downloader ObjectDownloader, backfill int) *Downloader {
@@ -55,6 +56,8 @@ func NewDownloader(sess *session.Session, stater state.Stater, downloader Object
 		DownloadedObjects: make(chan state.DownloadedObject),
 		ObjectsToDownload: make(chan *s3.Object),
 		BackfillInterval:  time.Hour * time.Duration(backfill),
+		// retain unlimited request concurrency by default
+		ConcurrencyLimiter: NoLimits{},
 	}
 }
 
@@ -160,6 +163,13 @@ func (d *ALBDownloader) ObjectPrefix(day time.Time) string {
 		d.AccountID+"_"+AWSElasticLoadBalancing+"_"+d.Region+"_app."+d.LBName)
 }
 
+// UseConcurrencyLimiting sets a concurrency limiter for the downloader
+// to optionally protect the requestee service from highly concurrent requests,
+// which could trigger rate-limiting
+func (d *Downloader) UseConcurrencyLimiting(limiter ConcurrencyLimiter) {
+	d.ConcurrencyLimiter = limiter
+}
+
 func (d *Downloader) downloadObject(obj *s3.Object) error {
 	logrus.WithFields(logrus.Fields{
 		"key":           *obj.Key,
@@ -198,9 +208,11 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 
 func (d *Downloader) downloadObjects() {
 	for obj := range d.ObjectsToDownload {
+		d.ConcurrencyLimiter.WaitToRequest()
 		if err := d.downloadObject(obj); err != nil {
 			logrus.Error(err)
 		}
+		d.ConcurrencyLimiter.Release()
 		// TODO: Should we sleep in between downloads here? Watching
 		// many load balancers concurrently could potentially result in
 		// many downloads attempting to go off at once, and
@@ -242,7 +254,7 @@ func (d *Downloader) pollObjects() {
 	// get new logs every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute).C
 
-	logrus.Debugf("Polling objects in region %s", *d.Sess.Config.Region)
+	logrus.Debugf("Polling objects in region %s for %s", *d.Sess.Config.Region, d.ObjectDownloader.ObjectPrefix(time.Now().UTC()))
 	s3svc := s3.New(d.Sess, nil)
 
 	// Start the loop to continually ingest access logs.
@@ -272,6 +284,7 @@ func (d *Downloader) pollObjects() {
 			os.Exit(1)
 		}
 		logrus.WithField("entity", d.String()).Info("Bucket polling paused until the next set of logs are available")
+
 		<-ticker
 	}
 }
@@ -280,4 +293,44 @@ func (d *Downloader) Download(downloadedObjects chan state.DownloadedObject) {
 	d.DownloadedObjects = downloadedObjects
 	go d.pollObjects()
 	go d.downloadObjects()
+}
+
+type ConcurrencyLimit struct {
+	concurrency      int
+	requestSemaphore chan interface{}
+}
+
+// NewConcurrencyLimit creates a new concurrency limiter
+// with the provided limit
+func NewConcurrencyLimit(limit int) *ConcurrencyLimit {
+	requestSem := make(chan interface{}, limit)
+	return &ConcurrencyLimit{
+		limit,
+		requestSem,
+	}
+}
+
+// WaitToRequest waits for a slot in the request semaphore to free up
+func (c *ConcurrencyLimit) WaitToRequest() {
+	start := time.Now()
+	c.requestSemaphore <- struct{}{}
+	waited := time.Since(start)
+	logrus.WithField("concurrency_limit", c.concurrency).
+		Debugf("Waited %d ms to make request", waited.Milliseconds())
+}
+
+// Release releases the claim to the semaphore
+func (c *ConcurrencyLimit) Release() {
+	<-c.requestSemaphore
+}
+
+// NoLimits is a no-op that does no concurrency limiting
+type NoLimits struct{}
+
+func (n NoLimits) WaitToRequest() {}
+func (n NoLimits) Release()       {}
+
+type ConcurrencyLimiter interface {
+	WaitToRequest()
+	Release()
 }

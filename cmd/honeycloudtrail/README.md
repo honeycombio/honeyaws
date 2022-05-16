@@ -4,7 +4,11 @@ Honeycloudtrail ingests cloudtrail logs for single-region, multi-region, or Orga
 
 ## Env Vars
 
-`HONEYCLOUDTRAIL_ROLE_ARN` - If you have created a special role for accessing your Cloud Trail, for example [per the AWS docs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-sharing-logs.html), you can provide the arn as an environment variable, and honeycloudtrail will assume that role.
+### IAM
+
+`HONEYCLOUDTRAIL_ROLE_ARN` - If you have created a special role for accessing your Cloud Trail [per the AWS docs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-sharing-logs.html), you can provide the arn as an environment variable, and honeycloudtrail will assume that role.
+
+### Multi-region and Organization Trails
 
 Organization Cloud Trails by default are multiregion, and write all account logs to the same bucket. You can control which regions and accounts are ingested with these env vars. By default only the session's region and account logs will be ingested.
 

@@ -135,7 +135,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 			downloadsCh := make(chan state.DownloadedObject)
 			defaultPublisher := publisher.NewHoneycombPublisher(opt, stater, publisher.NewCloudTrailEventParser(opt))
 
-			trlHandler := NewTrailHandler(sess, stater, downloadsCh)
+			trlHandler := NewTrailHandler(sess, stater, downloadsCh, opt.ConcurrencyLimit)
 
 			for _, trail := range trailListResp.TrailList {
 				s3Bucket := trail.S3BucketName
@@ -227,27 +227,33 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 }
 
 type TrailHandler struct {
-	accountsOverride []string
-	regionsOverride  []string
-	sess             *session.Session
-	stater           state.Stater
-	downloadsCh      chan state.DownloadedObject
+	accountsToCollect []string
+	regionsToCollect  []string
+	sess              *session.Session
+	stater            state.Stater
+	downloadsCh       chan state.DownloadedObject
+	limiter           logbucket.ConcurrencyLimiter
 }
 
-func NewTrailHandler(s *session.Session, st state.Stater, downloadsCh chan state.DownloadedObject) TrailHandler {
+func NewTrailHandler(s *session.Session, st state.Stater, downloadsCh chan state.DownloadedObject, s3concurrencyLimit int) TrailHandler {
 	ce := TrailHandler{
 		sess:        s,
 		stater:      st,
 		downloadsCh: downloadsCh,
+		limiter:     logbucket.NoLimits{},
+	}
+	if s3concurrencyLimit > 0 {
+		ce.limiter = logbucket.NewConcurrencyLimit(s3concurrencyLimit)
+		logrus.Infof("Running with s3 concurrency limit of %d", s3concurrencyLimit)
 	}
 
 	// For Organization or multiregion Trails, determine if trail logs for
 	// specific account ids and regions outside the default session should be collected
 	if rawRegions := os.Getenv("HONEYCLOUDTRAIL_COLLECT_REGIONS"); rawRegions != "" {
-		ce.regionsOverride = strings.Split(rawRegions, ",")
+		ce.regionsToCollect = strings.Split(rawRegions, ",")
 	}
 	if rawAccounts := os.Getenv("HONEYCLOUDTRAIL_COLLECT_ACCOUNTS"); rawAccounts != "" {
-		ce.accountsOverride = strings.Split(rawAccounts, ",")
+		ce.accountsToCollect = strings.Split(rawAccounts, ",")
 	}
 	return ce
 }
@@ -256,23 +262,23 @@ func NewTrailHandler(s *session.Session, st state.Stater, downloadsCh chan state
 // when polling and downloading trail objects
 func (c TrailHandler) AccountPathsToIngest(sess *session.Session) []string {
 	// If no overriding accounts provided, use the session values
-	sessionMetaData := meta.Data(sess)
-	if len(c.accountsOverride) == 0 {
-		logrus.Info("No accounts specified, using session account id for object download")
-		return []string{sessionMetaData.AccountID}
+	if len(c.accountsToCollect) == 0 {
+		sessionAccountID := meta.Data(sess).AccountID
+		logrus.Infof("No accounts specified, using default account id %s for object download", sessionAccountID)
+		return []string{sessionAccountID}
 	}
-	return c.accountsOverride
+	return c.accountsToCollect
 }
 
-// RegionPathsToIngest handles what region(s) to look for in the s3 path
+// RegionPathsToIngest handles what region(s) to specify in the s3 path
 // when polling and downloading trail objects
 func (c TrailHandler) RegionPathsToIngest(sess *session.Session) []string {
-	sessionMetaData := meta.Data(sess)
-	if len(c.regionsOverride) == 0 {
-		logrus.Info("No regions specified, using session region for object download")
-		return []string{sessionMetaData.Region}
+	if len(c.regionsToCollect) == 0 {
+		sessionRegion := meta.Data(sess).Region
+		logrus.Infof("No regions specified, using default region %s for object download", sessionRegion)
+		return []string{sessionRegion}
 	}
-	return c.regionsOverride
+	return c.regionsToCollect
 }
 
 func (c TrailHandler) IngestCloudTrail(trail *cloudtrail.Trail) {
@@ -293,17 +299,29 @@ func (c TrailHandler) IngestCloudTrail(trail *cloudtrail.Trail) {
 	awsConf := aws.NewConfig().WithRegion(*trail.HomeRegion)
 	rsess := c.sess.Copy(awsConf)
 
+	// Only Organization trails use the org id in the S3 path,
+	// so only set if org trail
+	var orgID string
+	if *trail.IsOrganizationTrail {
+		orgID = opt.OrganizationID
+		if orgID == "" {
+			logrus.Warnf("Attempting to ingest Organization Trail, but no org id provided")
+		}
+	}
+
+	// Determine whether to use trail region and account or overrides
 	accounts := c.AccountPathsToIngest(rsess)
 	logrus.Infof("Will fetch objects for account(s): %+v", accounts)
 	regions := c.RegionPathsToIngest(rsess)
 	logrus.Infof("Will fetch objects for region(s): %+v", regions)
 
-	// Create a downloader for each account and region that needs to be collected
+	// Create a downloader for each account and region path that needs to be collected
 	for _, accountID := range accounts {
 		for _, region := range regions {
 			// Note: this is potentially a lot of concurrent requests to S3 if many accounts / regions are provided
-			cloudtrailDownloader := logbucket.NewCloudTrailDownloader(accountID, region, *trail.S3BucketName, prefix, *trail.TrailARN, opt.OrganizationID)
+			cloudtrailDownloader := logbucket.NewCloudTrailDownloader(accountID, region, *trail.S3BucketName, prefix, *trail.TrailARN, orgID)
 			downloader := logbucket.NewDownloader(rsess, c.stater, cloudtrailDownloader, opt.BackfillHr)
+			downloader.UseConcurrencyLimiting(c.limiter)
 			go downloader.Download(c.downloadsCh)
 		}
 	}
