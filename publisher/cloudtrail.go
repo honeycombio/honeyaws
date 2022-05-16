@@ -45,6 +45,8 @@ type CloudTrailRecord struct {
 	Resources         []CloudTrailResource   `json:"resources"`
 	EventType         string                 `json:"eventType"`
 	RequestParameters map[string]interface{} `json:"requestParameters"`
+	ErrorCode         string                 `json:"errorCode"`
+	ErrorMessage      string                 `json:"errorMessage"`
 }
 
 type CloudTrailEventParser struct {
@@ -69,6 +71,8 @@ func flattenCloudTrailRecord(r *CloudTrailRecord) map[string]interface{} {
 	p["UserAgent"] = r.UserAgent
 	p["EventType"] = r.EventType
 	p["Parameters"] = r.RequestParameters
+	p["ErrorCode"] = r.ErrorCode
+	p["ErrorMessage"] = r.ErrorMessage
 
 	return p
 }
