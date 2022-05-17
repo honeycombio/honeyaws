@@ -89,7 +89,7 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					var trailID string
 					// ARN is required to describe Trails belonging to other regions
 					// https://docs.aws.amazon.com/awscloudtrail/latest/APIReference/API_DescribeTrails.html
-					if opt.MultiRegion {
+					if opt.FindTrailsInAllRegions {
 						trailID = *trail.TrailARN
 					} else {
 						trailID = *trail.Name
@@ -200,7 +200,7 @@ func main() {
 		logrus.Info("Organization ID provided, assuming Organization Cloud Trail")
 	}
 
-	if opt.MultiRegion {
+	if opt.FindTrailsInAllRegions {
 		logrus.Info("Multiregion set, will find trails in all regions")
 	}
 

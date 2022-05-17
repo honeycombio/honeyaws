@@ -208,7 +208,7 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 
 func (d *Downloader) downloadObjects() {
 	for obj := range d.ObjectsToDownload {
-		d.ConcurrencyLimiter.WaitToRequest()
+		d.ConcurrencyLimiter.Acquire()
 		if err := d.downloadObject(obj); err != nil {
 			logrus.Error(err)
 		}
@@ -310,8 +310,8 @@ func NewConcurrencyLimit(limit int) *ConcurrencyLimit {
 	}
 }
 
-// WaitToRequest waits for a slot in the request semaphore to free up
-func (c *ConcurrencyLimit) WaitToRequest() {
+// Acquire waits for a slot in the request semaphore to free up
+func (c *ConcurrencyLimit) Acquire() {
 	start := time.Now()
 	c.requestSemaphore <- struct{}{}
 	waited := time.Since(start)
@@ -327,10 +327,10 @@ func (c *ConcurrencyLimit) Release() {
 // NoLimits is a no-op that does no concurrency limiting
 type NoLimits struct{}
 
-func (n NoLimits) WaitToRequest() {}
-func (n NoLimits) Release()       {}
+func (n NoLimits) Acquire() {}
+func (n NoLimits) Release() {}
 
 type ConcurrencyLimiter interface {
-	WaitToRequest()
+	Acquire()
 	Release()
 }
