@@ -1,5 +1,11 @@
 # Honeycomb AWS Changelog
 
+## 1.4.4 2022-07-20
+
+### Maintenance
+
+- fix openSSL CVE by re-releasing on a new container | [@kentquirk](https://github.com/kentquirk)
+
 ## 1.4.3 2022-04-19
 
 ### Maintenance
