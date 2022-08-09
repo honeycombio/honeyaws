@@ -208,15 +208,13 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 
 func (d *Downloader) downloadObjects() {
 	for obj := range d.ObjectsToDownload {
+		// TODO(2022.08.08): at time of writing only
+		// honeycloudtrail passes through a concurrency limiter
 		d.ConcurrencyLimiter.Acquire()
 		if err := d.downloadObject(obj); err != nil {
 			logrus.Error(err)
 		}
 		d.ConcurrencyLimiter.Release()
-		// TODO: Should we sleep in between downloads here? Watching
-		// many load balancers concurrently could potentially result in
-		// many downloads attempting to go off at once, and
-		// consequently getting rate limited by AWS.
 	}
 }
 
@@ -234,6 +232,7 @@ func (d *Downloader) accessLogBucketPageCallback(processedObjects map[string]tim
 		}
 
 		if time.Since(*obj.LastModified) < d.BackfillInterval {
+			logrus.Debugf("Consuming object of age %s", time.Since(*obj.LastModified))
 			// Note: this marks an object as processed even if the download fails
 			if err := d.SetProcessed(*obj.Key); err != nil {
 				logrus.Debug("Error setting state of object as processed: ", *obj.Key)

@@ -20,8 +20,11 @@ ex: `HONEYCLOUDTRAIL_COLLECT_ACCOUNTS=12345678,66654321,98765555`
 
 ## CLI Args
 
+-   `ls` - List the names of Cloud Trails visible to this profile
+-   `lsa` - Works like `ls`, but lists the cloudtrail name and ARN. The ARN is required for describing and ingesting Trails outside the session region.
+-   `--concurrency_limit` - An optional download concurrency limit to avoid rate limiting from AWS. The default behavior is to allow unlimited concurrency, which could result in a high volume of download requests for accounts with a large number of Cloud Trails.
+
 ### Multi-region and Organization Trails
 
--   `organization_id` - As discussed in the [AWS docs on locating Cloud Trail logs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-find-log-files.html), Organization Cloud Trail s3 Paths will have the organization id in them. You can pass this in via the `organization_id` flag so that S3 paths will be properly formatted.
--   `find_trails_in_all_regions` - If you have multiregion cloudtrails or trails in regions other than the one honeycloudtrail is running in, pass in the `find_trails_in_all_regions` flag to be able to ingest them.
--   `lsa` - Works like `ls`, but lists the cloudtrail ARN instead of the name. The ARN is required for describing and ingesting Trails outside the session region.
+-   `--organization_id` - As discussed in the [AWS docs on locating Cloud Trail logs](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-find-log-files.html), Organization Cloud Trail s3 Paths will have the organization id in them. You can pass this in via the `organization_id` flag so that S3 paths will be properly formatted.
+-   `--find_trails_in_all_regions` - If you have multiregion cloudtrails or trails in regions other than the one honeycloudtrail is running in, pass in the `find_trails_in_all_regions` flag to be able to ingest them.

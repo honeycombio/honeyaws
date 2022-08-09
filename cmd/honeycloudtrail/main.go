@@ -40,8 +40,6 @@ func init() {
 }
 
 func cmdCloudTrail(args []string) error {
-	// TODO: Would be nice to have this more highly configurable.
-	//
 	// Start with default profile.
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -71,7 +69,7 @@ func cmdCloudTrail(args []string) error {
 
 		case "lsa", "list-arn":
 			for _, trailSummary := range listTrailsResp.TrailList {
-				fmt.Println(*trailSummary.TrailARN)
+				fmt.Printf("%s: %s\n", *trailSummary.Name, *trailSummary.TrailARN)
 			}
 			return nil
 

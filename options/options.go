@@ -13,7 +13,7 @@ type Options struct {
 	SamplerDecay           float64 `long:"sampler_decay" default:"0.5" description:"Used only when sampler_type is set to 'ema'. A value between (0,1) that controls how fast new observations are factored into the moving average. Larger values mean the sample rates are more sensitive to recent observations."`
 	OrganizationID         string  `long:"organization_id" description:"The organization id found in the S3 path for Organization cloud trails"`
 	FindTrailsInAllRegions bool    `long:"find_trails_in_all_regions" description:"Enable honeycloudtrail to describe trails outside the session region"`
-	ConcurrencyLimit       int     `long:"concurrency_limit" description:"Limit max concurrent access to CloudTrail S3 logs"`
+	ConcurrencyLimit       int     `long:"concurrency_limit" description:"[default: unlimited] Limit max concurrent access to CloudTrail S3 logs"`
 
 	Version bool   `short:"V" long:"version" description:"Show version"`
 	APIHost string `hidden:"true" long:"api_host" description:"Host for the Honeycomb API" default:"https://api.honeycomb.io/"`
