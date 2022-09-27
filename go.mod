@@ -10,7 +10,7 @@ require (
 	github.com/honeycombio/libhoney-go v1.15.8
 	github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 )
 
 require (
@@ -24,6 +24,6 @@ require (
 	github.com/smartystreets/assertions v1.2.1 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 )
