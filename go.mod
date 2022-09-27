@@ -6,8 +6,8 @@ require (
 	github.com/aws/aws-sdk-go v1.44.26
 	github.com/honeycombio/dynsampler-go v0.2.1
 	github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c // indirect
-	github.com/honeycombio/honeytail v1.7.1
-	github.com/honeycombio/libhoney-go v1.15.8
+	github.com/honeycombio/honeytail v1.8.1
+	github.com/honeycombio/libhoney-go v1.16.0
 	github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/sirupsen/logrus v1.9.0
@@ -20,10 +20,10 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20220221023154-0b2280d3ff96 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/klauspost/compress v1.15.8 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/smartystreets/assertions v1.2.1 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 )
