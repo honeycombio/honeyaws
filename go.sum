@@ -25,8 +25,8 @@ github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c h1:BKXyxACo6ASC
 github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c/go.mod h1:b5vehEHPr2kpld6NR9gSja7nMX8lGQbU5ACKOd9aa9g=
 github.com/honeycombio/honeytail v1.8.1 h1:io0K2bMSh1t/N4PVg3aAX8F1Sj6xUaxagAr5nAMP+tE=
 github.com/honeycombio/honeytail v1.8.1/go.mod h1:UYjPjb6tG2/r59C7kUMuEqdspB4p96oW0ndWvDLIDQw=
-github.com/honeycombio/libhoney-go v1.17.0 h1:e/s52AcMytDCIobAfThj82mWqSYdPV+djhCs4dKxxnU=
-github.com/honeycombio/libhoney-go v1.17.0/go.mod h1:KwbcXkqUbH20x3MpfSt/kdvlog3FFdEnouqYD3XKXLY=
+github.com/honeycombio/libhoney-go v1.18.0 h1:OYHOP381r3Ea76BhUYeza8PUTMDp8MByoOxDn3qtEq8=
+github.com/honeycombio/libhoney-go v1.18.0/go.mod h1:KwbcXkqUbH20x3MpfSt/kdvlog3FFdEnouqYD3XKXLY=
 github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f h1:sFlcFcBhPlje785JZwt7xMj7sZSU08HwipIwvk1s4Qc=
 github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f/go.mod h1:2CQJZ3RJ2uC2Mp3zJbSkVbFw9iZdCpWwymuADPZYFu4=
 github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LFvc=
