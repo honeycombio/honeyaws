@@ -203,7 +203,8 @@ workflows:
             branches:
               ignore: /.*/
       - docker/publish:
-          tag: latest,${CIRCLE_TAG:1}
+          tag: test
+          deploy: false
           extra_build_args: --build-arg BUILD_ID=${CIRCLE_TAG:1}
           image: $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
           requires:
@@ -211,9 +212,9 @@ workflows:
             - build_docker
           filters:
             tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
+              only: /.*/
+#            branches:
+#              ignore: /.*/
       - publish_docker:
           context: Honeycomb Secrets for Public Repos
           requires:
