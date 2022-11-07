@@ -1,5 +1,18 @@
 # Honeycomb AWS Changelog
 
+## 1.4.5 2022-11-07
+
+### Maintenance
+
+- bump honeytail from 1.8.1 to 1.8.2 (#219)
+- Bump github.com/honeycombio/libhoney-go from 1.17.0 to 1.18.0 (#217)
+- Bump github.com/aws/aws-sdk-go from 1.44.106 to 1.44.128 (#216)
+- Bump github.com/aws/aws-sdk-go from 1.44.26 to 1.44.106 (#211)
+- Bump github.com/honeycombio/libhoney-go from 1.15.8 to 1.17.0 (#210)
+- Bump github.com/honeycombio/honeytail from 1.7.1 to 1.8.1 (#208)
+- Bump github.com/sirupsen/logrus from 1.8.1 to 1.9.0 (#205)
+- Bump github.com/honeycombio/honeytail from 1.7.0 to 1.7.1 (#204)
+
 ## 1.4.4 2022-07-20
 
 ### Maintenance
