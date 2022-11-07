@@ -173,9 +173,9 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v[0-9].*/
-            branches:
-              ignore: /.*/
+              only: /.*/
+#            branches:
+#              ignore: /.*/
       - build_docker:
           requires:
             - build
