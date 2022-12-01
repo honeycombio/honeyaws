@@ -3,7 +3,7 @@ module github.com/honeycombio/honeyaws
 go 1.18
 
 require (
-	github.com/aws/aws-sdk-go v1.44.128
+	github.com/aws/aws-sdk-go v1.44.150
 	github.com/honeycombio/dynsampler-go v0.2.1
 	github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c // indirect
 	github.com/honeycombio/honeytail v1.8.2
@@ -24,6 +24,6 @@ require (
 	github.com/smartystreets/assertions v1.2.1 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 )
