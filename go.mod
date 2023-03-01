@@ -3,7 +3,7 @@ module github.com/honeycombio/honeyaws
 go 1.18
 
 require (
-	github.com/aws/aws-sdk-go v1.44.192
+	github.com/aws/aws-sdk-go v1.44.212
 	github.com/honeycombio/dynsampler-go v0.3.0
 	github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c // indirect
 	github.com/honeycombio/honeytail v1.8.2
