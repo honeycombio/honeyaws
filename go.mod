@@ -10,7 +10,7 @@ require (
 	github.com/honeycombio/libhoney-go v1.18.0
 	github.com/honeycombio/urlshaper v0.0.0-20170302202025-2baba9ae5b5f
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.2
 )
 
 require (
