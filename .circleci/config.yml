@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@2.1.0
+  aws-cli: circleci/aws-cli@3.2.0
   docker: circleci/docker@2.1.4
 
 executors:
@@ -129,8 +129,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - aws-cli/setup:
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          role-arn: "arn:aws:iam::702835727665:role/circleci-public-repos"
+          role-session-name: "honeyaws"
           aws-region: AWS_REGION
       - run:
           name: sync_s3_artifacts
