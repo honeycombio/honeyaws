@@ -1,5 +1,28 @@
 # Honeycomb AWS Changelog
 
+## 1.4.6 2023-07-12
+
+### Maintenance
+
+- ci: send Github issues and PRs to Asana by @brookesargent in #227
+- chore: Bump github.com/aws/aws-sdk-go from 1.44.128 to 1.44.150 by @dependabot in #226
+- ci: update workflow to work for `pull_request_target` by @brookesargent in #228
+- ci: add repo name and repo link to asana task by @brookesargent in #233
+- maint(deps): Bump github.com/aws/aws-sdk-go from 1.44.150 to 1.44.192 by @dependabot in #234
+- maint(deps): Bump github.com/honeycombio/dynsampler-go from 0.2.1 to 0.3.0 by @dependabot in #231
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.192 to 1.44.212 by @dependabot in #235
+- maint(deps): bump github.com/honeycombio/dynsampler-go from 0.3.0 to 0.4.0 by @dependabot in #237
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.212 to 1.44.244 by @dependabot in #238
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.244 to 1.44.254 by @dependabot in #240
+- maint(deps): bump github.com/honeycombio/honeytail from 1.8.2 to 1.8.3 by @dependabot in #241
+- maint(deps): bump github.com/sirupsen/logrus from 1.9.0 to 1.9.2 by @dependabot in #243
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.254 to 1.44.274 by @dependabot in #242
+- chore: switch to temp credentials for CI by @NLincoln in #244
+- maint(deps): bump github.com/sirupsen/logrus from 1.9.2 to 1.9.3 by @dependabot in #245
+- maint(deps): bump github.com/honeycombio/dynsampler-go from 0.4.0 to 0.5.1 by @dependabot in #248
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.274 to 1.44.298 by @dependabot in #249
+- maint(deps): bump github.com/honeycombio/libhoney-go from 1.18.0 to 1.20.0 by @dependabot in #246
+
 ## 1.4.5 2022-11-07
 
 ### Maintenance
