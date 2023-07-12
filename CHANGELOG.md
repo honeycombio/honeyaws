@@ -1,6 +1,6 @@
 # Honeycomb AWS Changelog
 
-## 1.4.6 2023-07-10
+## 1.4.6 2023-07-12
 
 ### Maintenance
 
