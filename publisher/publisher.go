@@ -26,7 +26,7 @@ var (
 	// 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 0.000016 200 200 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2
 	//
 	// Example ALB log format (aws_elbv2):
-	// http 2018-02-18T03:03:10.432026Z app/alb-test-2/ebd66bfd69677bfa 142.44.241.206:60000 172.31.21.134:80 0.001 0.001 0.000 200 200 70 248 "GET http://alb-test-2-265992175.us-east-1.elb.amazonaws.com:80/ HTTP/1.0" "https://getroot.sh survey" - - arn:aws:elasticloadbalancing:us-east-1:729997878290:targetgroup/ec2instances/3bf8bbb3ab2b6080 "Root=1-5a88eced-40876ce050d010360bfb23bd" "-" "-"
+	// h2 2023-09-26T21:12:00.951475Z app/alb-name/cd02e94b08136065 10.11.12.13:47882 10.3.47.87:8080 0.000 0.003 0.000 200 200 47 258 "GET https://api.simulation.io:443/reticulate/spline/ HTTP/2.0" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123321:targetgroup/target-group-name/55f5bbaecb7cd4b2 "Root=1-65134920-5f5a22aa51fbe54353e16dcb" "app.simulation.io" "arn:aws:acm:us-east-1:123321:certificate/4c8788c1-b87a-4d6f-a48a-bc5e5b206e21" 9 2023-09-26T21:12:00.948000Z "forward" "-" "-" "10.0.26.59:80" "200" "-" "-"
 	//
 	// Example CloudFront log format (aws_cf_web):
 	// 2014-05-23 01:13:11 FRA2 182 192.0.2.10 GET d111111abcdef8.cloudfront.net /view/my/file.html 200 www.displaymyfiles.com Mozilla/4.0%20(compatible;%20MSIE%205.0b1;%20Mac_PowerPC) - zip=98101 RefreshHit MRVMF7KydIvxMWfJIglgwHQwZsbG2IhRJ07sn9AkKUFSHS9EXAMPLE== d111111abcdef8.cloudfront.net http - 0.001 - - - RefreshHit HTTP/1.1
@@ -34,7 +34,7 @@ var (
 	logFormat = []byte(fmt.Sprintf(
 		`log_format %s '$timestamp $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol';
 log_format %s '$timestamp $x_edge_location $sc_bytes $c_ip $cs_method $cs_host $cs_uri_stem $sc_status $cs_referer $cs_user_agent $cs_uri_query $cs_cookie $x_edge_result_type $x_edge_request_id $x_host_header $cs_protocol $cs_bytes $time_taken $x_forwarded_for $ssl_protocol $ssl_cipher $x_edge_response_result_type $cs_protocol_version';
-log_format %s '$type $response_time $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" "$domain_name" "$chosen_cert_arn" $matched_rule_priority $timestamp';`,
+log_format %s '$type $response_time $elb $client_authority $backend_authority $request_processing_time $backend_processing_time $response_processing_time $elb_status_code $backend_status_code $received_bytes $sent_bytes "$request" "$user_agent" $ssl_cipher $ssl_protocol $target_group_arn "$trace_id" "$domain_name" "$chosen_cert_arn" $matched_rule_priority $timestamp "$actions_executed" "$redirect_url" "$error_reason" "$target_port_list" "$target_status_code_list" "$classification" "$classification_reason"';`,
 		AWSElasticLoadBalancerFormat,
 		AWSCloudFrontWebFormat,
 		AWSApplicationLoadBalancerFormat,

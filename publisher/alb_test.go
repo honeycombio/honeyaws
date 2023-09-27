@@ -23,7 +23,7 @@ func TestALBParseEvents(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 
 	zipper := gzip.NewWriter(tmpFile)
-	if _, err := zipper.Write([]byte(`h2 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 -1 504 504 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 groupARN "Root=1-5e71404d-84277a47a826ab3d2e844170" "ui-dogfood.honeycomb.io" "certARN" 0 2017-07-31T20:30:52.975041Z "forward" "-" "-" "10.11.12.13:80" "201"`)); err != nil {
+	if _, err := zipper.Write([]byte(`h2 2017-07-31T20:30:57.975041Z spline_reticulation_lb 10.11.12.13:47882 10.3.47.87:8080 0.000021 0.010962 -1 504 504 766 17 "PUT https://api.simulation.io:443/reticulate/spline/1 HTTP/1.1" "libhoney-go/1.3.3" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 groupARN "Root=1-5e71404d-84277a47a826ab3d2e844170" "ui-dogfood.honeycomb.io" "certARN" 0 2017-07-31T20:30:52.975041Z "forward" "http://redirect.com" "AWSALBTGCookieInvalid" "10.11.12.13:80" "201" "Acceptable" "NonCompliantVersion"`)); err != nil {
 		t.Fatal("Shouldn't have err but did: ", err)
 	}
 	if err := zipper.Close(); err != nil {
@@ -61,6 +61,13 @@ func TestALBParseEvents(t *testing.T) {
 		"matched_rule_priority":    int64(0),
 		"chosen_cert_arn":          "certARN",
 		"target_group_arn":         "groupARN",
+		"actions_executed":         "forward",
+		"redirect_url":             "http://redirect.com",
+		"error_reason":             "AWSALBTGCookieInvalid",
+		"target_port_list":         "10.11.12.13:80",
+		"target_status_code_list":  int64(201),
+		"classification":           "Acceptable",
+		"classification_reason":    "NonCompliantVersion",
 	}
 	ev := <-outCh
 	close(outCh)
