@@ -9,7 +9,7 @@
 
 ### Added
 
-- feat: Add support for missing ALB fields in #254
+- feat: Add support for missing ALB fields by @BRMatt in #254
 
 ## 1.4.6 2023-07-12
 
