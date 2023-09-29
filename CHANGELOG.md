@@ -6,6 +6,9 @@
 
 - maint(deps): bump github.com/aws/aws-sdk-go from 1.44.298 to 1.44.314 in #251
 - maint(deps): bump github.com/aws/aws-sdk-go from 1.44.314 to 1.45.2 in #252
+
+### Added
+
 - feat: Add support for missing ALB fields in #254
 
 ## 1.4.6 2023-07-12
