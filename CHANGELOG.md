@@ -1,5 +1,13 @@
 # Honeycomb AWS Changelog
 
+## 1.4.7 2023-09-29
+
+### Maintenance
+
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.298 to 1.44.314 in #251
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.44.314 to 1.45.2 in #252
+- feat: Add support for missing ALB fields in #254
+
 ## 1.4.6 2023-07-12
 
 ### Maintenance
