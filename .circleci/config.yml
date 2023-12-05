@@ -7,7 +7,7 @@ orbs:
 executors:
   linuxgo:
     docker:
-      - image: cimg/go:1.18
+      - image: cimg/go:1.19
         environment:
           GO111MODULE: "on"
 
