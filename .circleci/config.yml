@@ -139,7 +139,7 @@ jobs:
   build_docker:
     executor: linuxgo
     steps:
-      - run: go install github.com/google/ko@latest
+      - run: go install github.com/google/ko@v0.15.2
       - checkout
       - setup_remote_docker
       - run:
@@ -149,7 +149,7 @@ jobs:
   publish_docker:
     executor: linuxgo
     steps:
-      - run: go install github.com/google/ko@latest
+      - run: go install github.com/google/ko@v0.15.2
       - checkout
       - setup_remote_docker
       - run:
