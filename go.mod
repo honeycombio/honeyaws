@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/honeycombio/dynsampler-go v0.6.4
-	github.com/honeycombio/honeytail v1.11.0
+	github.com/honeycombio/honeytail v1.12.0
 	github.com/honeycombio/libhoney-go v1.27.1
 	github.com/honeycombio/urlshaper v0.0.0-20240715213722-6ba2583df080
 	github.com/jessevdk/go-flags v1.6.1

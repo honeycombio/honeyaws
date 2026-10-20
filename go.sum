@@ -23,8 +23,8 @@ github.com/honeycombio/dynsampler-go v0.6.4 h1:EM3FXN2Lfmso41MRMmSvRynMrz+AHiRff
 github.com/honeycombio/dynsampler-go v0.6.4/go.mod h1:M5YYNOfxRrBlEWDatTlHMYo5F7GjwVnptx5z+uXIVMo=
 github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c h1:BKXyxACo6ASCQP7kfkd0kLiV5BsPfIciVCbd7W78gEg=
 github.com/honeycombio/gonx v1.3.1-0.20180426150627-7443e4e8f28c/go.mod h1:b5vehEHPr2kpld6NR9gSja7nMX8lGQbU5ACKOd9aa9g=
-github.com/honeycombio/honeytail v1.11.0 h1:OJNVuC4TW1HA/iPWK8j96NzSdGkpLkk690uiQq5bAtI=
-github.com/honeycombio/honeytail v1.11.0/go.mod h1:iulL80HI4dAHvDLCDqs8Pi1nJ7loWWrqVjfqdHnYWo0=
+github.com/honeycombio/honeytail v1.12.0 h1:nvjVM5xhrdhhOV5UzBYnmEv9Tr6JY3SxA4nbDeZ6+Oo=
+github.com/honeycombio/honeytail v1.12.0/go.mod h1:aM83srEKyHZELFiLhU+wyDJX0aJ7DoITQ+hSAp2/LE0=
 github.com/honeycombio/libhoney-go v1.27.1 h1:79FR19fVpaeDMqTDfpXtMxd90vzsxhZnIOSysMrUSQQ=
 github.com/honeycombio/libhoney-go v1.27.1/go.mod h1:qLZO8Q3ep/hISEoVC7m8N9ZOvn2eqaGdoJg9XXXasqM=
 github.com/honeycombio/urlshaper v0.0.0-20240715213722-6ba2583df080 h1:xSJgXyM/87Pnz64k1fWb4XHmx4IdcYGAFwle4/4IeHI=
