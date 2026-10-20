@@ -7,7 +7,7 @@ orbs:
 executors:
   linuxgo:
     docker:
-      - image: cimg/go:1.19
+      - image: cimg/go:1.27
         environment:
           GO111MODULE: "on"
 
@@ -139,7 +139,7 @@ jobs:
   build_docker:
     executor: linuxgo
     steps:
-      - run: go install github.com/google/ko@v0.15.2
+      - run: go install github.com/google/ko@v0.19.1
       - checkout
       - setup_remote_docker
       - run:
@@ -149,7 +149,7 @@ jobs:
   publish_docker:
     executor: linuxgo
     steps:
-      - run: go install github.com/google/ko@v0.15.2
+      - run: go install github.com/google/ko@v0.19.1
       - checkout
       - setup_remote_docker
       - run:
