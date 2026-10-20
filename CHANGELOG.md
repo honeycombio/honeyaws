@@ -20,6 +20,14 @@
 - maint(deps): bump github.com/aws/aws-sdk-go from 1.51.12 to 1.53.14 in the examples group across 1 directory by @dependabot in #272
 - docs: update vulnerability reporting process by @robbkidd in #274
 - maint: bump go to 1.27.3 by @lizthegrey in #277
+- ci: pin executor image to cimg/go:1.27.3 by @lizthegrey in #278
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.53.14 to 1.55.8 by @lizthegrey in #280
+- maint(deps): bump github.com/honeycombio/dynsampler-go from 0.6.0 to 0.6.4 by @lizthegrey in #280
+- maint(deps): bump github.com/honeycombio/honeytail from 1.9.0 to 1.12.0 by @lizthegrey in #280
+- maint(deps): bump github.com/honeycombio/libhoney-go from 1.22.0 to 1.27.1 by @lizthegrey in #280
+- maint(deps): bump github.com/honeycombio/urlshaper from 0.0.0-20170302202025-2baba9ae5b5f to 0.0.0-20240715213722-6ba2583df080 by @lizthegrey in #280
+- maint(deps): bump github.com/jessevdk/go-flags from 1.5.0 to 1.6.1 by @lizthegrey in #280
+- maint(deps): bump github.com/sirupsen/logrus from 1.9.3 to 1.10.2 by @lizthegrey in #280
 
 ## 1.4.7 2023-09-29
 
