@@ -1,5 +1,26 @@
 # Honeycomb AWS Changelog
 
+## 1.4.8 2026-10-20
+
+### Maintenance
+
+- ci: remove duplicate docker publish by @brookesargent in #256
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.45.2 to 1.45.19 by @dependabot in #257
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.45.19 to 1.48.11 by @dependabot in #259
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.48.11 to 1.49.13 by @dependabot in #260
+- maint(deps): bump github.com/honeycombio/dynsampler-go from 0.5.1 to 0.6.0 by @dependabot in #261
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.49.13 to 1.50.9 by @dependabot in #263
+- maint(deps): bump github.com/honeycombio/honeytail from 1.8.3 to 1.9.0 by @dependabot in #262
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.50.9 to 1.50.30 by @dependabot in #265
+- maint(deps): bump github.com/honeycombio/libhoney-go from 1.20.0 to 1.21.0 by @dependabot in #264
+- maint(deps): bump github.com/honeycombio/libhoney-go from 1.21.0 to 1.22.0 by @dependabot in #267
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.50.30 to 1.51.12 by @dependabot in #266
+- chore: change codeowners to pipeline by @brookesargent in #268
+- maint: update repo for pipeline team ownership by @JamieDanielson in #270
+- maint(deps): bump github.com/aws/aws-sdk-go from 1.51.12 to 1.53.14 in the examples group across 1 directory by @dependabot in #272
+- docs: update vulnerability reporting process by @robbkidd in #274
+- maint: bump go to 1.27.3 by @lizthegrey in #277
+
 ## 1.4.7 2023-09-29
 
 ### Maintenance
