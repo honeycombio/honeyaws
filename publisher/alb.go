@@ -3,6 +3,7 @@ package publisher
 import (
 	"bufio"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -19,7 +20,8 @@ import (
 )
 
 type ALBEventParser struct {
-	sampler dynsampler.Sampler
+	sampler       dynsampler.Sampler
+	samplerFields []string
 }
 
 func NewALBEventParser(opt *options.Options) *ALBEventParser {
@@ -28,7 +30,7 @@ func NewALBEventParser(opt *options.Options) *ALBEventParser {
 		logrus.WithField("err", err).Fatal("couldn't build sampler from arguments")
 	}
 
-	ep := &ALBEventParser{sampler: s}
+	ep := &ALBEventParser{sampler: s, samplerFields: append([]string(nil), opt.SamplerFields...)}
 
 	if err := ep.sampler.Start(); err != nil {
 		logrus.WithField("err", err).Fatal("Couldn't start dynamic sampler")
@@ -81,44 +83,65 @@ func (ep *ALBEventParser) ParseEvents(obj state.DownloadedObject, out chan<- eve
 	return scanner.Err()
 }
 
+// samplingKey preserves the legacy key unless explicit fields are configured.
+// JSON tuples distinguish missing values, types, and field boundaries.
+func (ep *ALBEventParser) samplingKey(ev event.Event) (string, error) {
+	if len(ep.samplerFields) > 0 {
+		values := make([]interface{}, len(ep.samplerFields))
+		for i, field := range ep.samplerFields {
+			values[i] = ev.Data[field]
+		}
+		key, err := json.Marshal(values)
+		return string(key), err
+	}
+	// use backend_status_code and elb_status_code to set sample rate
+	var key string
+	if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
+		if bsc, ok := backendStatusCode.(int64); ok {
+			key = fmt.Sprintf("%d", bsc)
+		} else {
+			key = "0"
+			logrus.WithFields(logrus.Fields{
+				"field":       "backend_status_code",
+				"intended":    "int64",
+				"actual_val":  backendStatusCode,
+				"actual_type": fmt.Sprintf("%T", backendStatusCode),
+			}).Error("Did not cast field from access log correctly")
+		}
+	}
+	if elbStatusCode, ok := ev.Data["elb_status_code"]; ok {
+		if esc, ok := elbStatusCode.(int64); ok {
+			key = fmt.Sprintf("%s_%d", key, esc)
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"field":       "elb_status_code",
+				"intended":    "int64",
+				"actual_val":  elbStatusCode,
+				"actual_type": fmt.Sprintf("%T", elbStatusCode),
+			}).Error("Did not cast field from access log correctly")
+		}
+	}
+
+	// Make sure sample rate is per-ELB
+	if elbName, ok := ev.Data["elb"]; ok {
+		if name, ok := elbName.(string); ok {
+			key = fmt.Sprintf("%s_%s", key, name)
+		}
+	}
+
+	return key, nil
+}
+
 func (ep *ALBEventParser) DynSample(in <-chan event.Event, out chan<- event.Event) {
 	for ev := range in {
-		// use backend_status_code and elb_status_code to set sample rate
-		var key string
-		if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
-			if bsc, ok := backendStatusCode.(int64); ok {
-				key = fmt.Sprintf("%d", bsc)
-			} else {
-				key = "0"
-				logrus.WithFields(logrus.Fields{
-					"field":       "backend_status_code",
-					"intended":    "int64",
-					"actual_val":  backendStatusCode,
-					"actual_type": fmt.Sprintf("%T", backendStatusCode),
-				}).Error("Did not cast field from access log correctly")
-			}
+		key, err := ep.samplingKey(ev)
+		rate := 1
+		if err != nil {
+			// Retain the event if its key cannot be encoded, without logging data.
+			logrus.Error("Could not encode ALB sampling key; retaining event")
+		} else {
+			rate = ep.sampler.GetSampleRate(key)
 		}
-		if elbStatusCode, ok := ev.Data["elb_status_code"]; ok {
-			if esc, ok := elbStatusCode.(int64); ok {
-				key = fmt.Sprintf("%s_%d", key, esc)
-			} else {
-				logrus.WithFields(logrus.Fields{
-					"field":       "elb_status_code",
-					"intended":    "int64",
-					"actual_val":  elbStatusCode,
-					"actual_type": fmt.Sprintf("%T", elbStatusCode),
-				}).Error("Did not cast field from access log correctly")
-			}
-		}
-
-		// Make sure sample rate is per-ELB
-		if elbName, ok := ev.Data["elb"]; ok {
-			if name, ok := elbName.(string); ok {
-				key = fmt.Sprintf("%s_%s", key, name)
-			}
-		}
-
-		rate := ep.sampler.GetSampleRate(key)
 		if rate <= 0 {
 			logrus.WithField("rate", rate).Error("Sample should not be less than zero")
 			rate = 1
