@@ -133,7 +133,7 @@ func (ep *ALBEventParser) DynSample(in <-chan event.Event, out chan<- event.Even
 		key, err := ep.samplingKey(ev)
 		rate := 1
 		if err != nil {
-			logrus.Error("Could not encode ALB sampling key; retaining event")
+			logrus.WithError(err).Error("Could not encode ALB sampling key; retaining event")
 		} else {
 			rate = ep.sampler.GetSampleRate(key)
 		}
