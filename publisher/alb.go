@@ -30,7 +30,7 @@ func NewALBEventParser(opt *options.Options) *ALBEventParser {
 		logrus.WithField("err", err).Fatal("couldn't build sampler from arguments")
 	}
 
-	ep := &ALBEventParser{sampler: s, samplerFields: append([]string(nil), opt.SamplerFields...)}
+	ep := &ALBEventParser{sampler: s, samplerFields: opt.SamplerFields}
 
 	if err := ep.sampler.Start(); err != nil {
 		logrus.WithField("err", err).Fatal("Couldn't start dynamic sampler")
@@ -83,8 +83,6 @@ func (ep *ALBEventParser) ParseEvents(obj state.DownloadedObject, out chan<- eve
 	return scanner.Err()
 }
 
-// samplingKey preserves the legacy key unless explicit fields are configured.
-// JSON tuples distinguish missing values, types, and field boundaries.
 func (ep *ALBEventParser) samplingKey(ev event.Event) (string, error) {
 	if len(ep.samplerFields) > 0 {
 		values := make([]interface{}, len(ep.samplerFields))
@@ -94,7 +92,6 @@ func (ep *ALBEventParser) samplingKey(ev event.Event) (string, error) {
 		key, err := json.Marshal(values)
 		return string(key), err
 	}
-	// use backend_status_code and elb_status_code to set sample rate
 	var key string
 	if backendStatusCode, ok := ev.Data["backend_status_code"]; ok {
 		if bsc, ok := backendStatusCode.(int64); ok {
@@ -122,7 +119,6 @@ func (ep *ALBEventParser) samplingKey(ev event.Event) (string, error) {
 		}
 	}
 
-	// Make sure sample rate is per-ELB
 	if elbName, ok := ev.Data["elb"]; ok {
 		if name, ok := elbName.(string); ok {
 			key = fmt.Sprintf("%s_%s", key, name)
@@ -137,7 +133,6 @@ func (ep *ALBEventParser) DynSample(in <-chan event.Event, out chan<- event.Even
 		key, err := ep.samplingKey(ev)
 		rate := 1
 		if err != nil {
-			// Retain the event if its key cannot be encoded, without logging data.
 			logrus.Error("Could not encode ALB sampling key; retaining event")
 		} else {
 			rate = ep.sampler.GetSampleRate(key)
