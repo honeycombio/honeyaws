@@ -208,6 +208,10 @@ Use '`+os.Args[0]+` --help' to see available flags.`)
 		os.Exit(1)
 	}
 
+	if len(opt.SamplerFields) > 0 {
+		logrus.Warn("--sampler_fields only applies to honeyalb; ignoring")
+	}
+
 	if err := cmdELB(args); err != nil {
 		fmt.Fprintln(os.Stderr, "Error: ", err)
 		os.Exit(1)

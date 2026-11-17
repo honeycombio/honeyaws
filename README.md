@@ -123,6 +123,34 @@ sample rates are more heavily influenced by newer traffic
 
 `simple` is suitable for most types of traffic, but we recommend using `ema` if your traffic comes in in bursts.
 
+### ALB sampling fields
+
+`honeyalb` groups events by backend status code, load balancer status code, and
+load balancer name by default. To replace that key, repeat `--sampler_fields` for
+each parsed ALB log field to include:
+
+```sh
+honeyalb --sampler_type=ema --samplerate=20 \
+  --sampler_fields=elb --sampler_fields=domain_name \
+  --sampler_fields=elb_status_code --writekey=<writekey> ingest <alb-name>
+```
+
+Omitting `--sampler_fields` preserves the existing key and sampling behavior.
+Explicit fields replace the entire key; include `elb` to keep load balancers in
+separate groups. This option applies only to `honeyalb`, with either sampler type.
+
+Fields are read before request shaping and trace enrichment. For example,
+`domain_name`, `target_group_arn`, and `elb_status_code` are available, while derived
+`request_shape` and `request_method` are not. Missing fields form a null key
+component, distinct from an empty string. Check field names carefully: an unknown
+field is also missing. Keys preserve field boundaries and numeric/string values.
+
+Use fields with recurring values. A unique trace ID or raw request URL can make
+nearly every event a rare group and reduce the effectiveness of dynamic sampling.
+The `--samplerate` target applies across the configured groups, not independently
+to each key. The sample rate attached to retained events continues to reflect
+the sampler's actual per-key rate.
+
 ## Contributions
 
 Features, bug fixes and other changes to the Honeycomb AWS Bundle are gladly
