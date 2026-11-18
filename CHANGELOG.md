@@ -1,6 +1,6 @@
 # Honeycomb AWS Changelog
 
-## 1.5.0 2026-11-17
+## 1.5.0 2026-11-18
 
 ### Added
 
