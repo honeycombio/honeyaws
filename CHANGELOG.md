@@ -1,5 +1,15 @@
 # Honeycomb AWS Changelog
 
+## 1.5.0 2026-11-18
+
+### Added
+
+- feat: make honeyalb sampling fields configurable by @cbertinato in #283
+
+### Maintenance
+
+- chore: remove add-to-project workflow by @robbkidd in #281
+
 ## 1.4.8 2026-10-20
 
 ### Maintenance
