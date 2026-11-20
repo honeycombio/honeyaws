@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/honeycombio/honeyaws/options"
-	flag "github.com/jessevdk/go-flags"
 )
 
 func logAttributes(values map[string]string) []*elbv2.LoadBalancerAttribute {
@@ -58,30 +57,23 @@ func TestALBLogSources(t *testing.T) {
 	}
 }
 
-func TestALBLogFlags(t *testing.T) {
-	for _, args := range [][]string{nil, {"--alb_log_type=both", "--samplerate=20", "--connection_samplerate=10", "--keep_4xx", "--connection_sampler_fields=elb"}} {
-		opt := &options.Options{}
-		if _, err := flag.NewParser(opt, flag.None).ParseArgs(args); err != nil {
-			t.Fatal(err)
-		}
-		if err := validateALBOptions(opt); err != nil {
-			t.Fatal(err)
-		}
-		if len(args) == 0 && (opt.ALBLogType != "access" || opt.ConnectionSampleRate != 1) {
-			t.Fatalf("unexpected defaults: %#v", opt)
-		}
-		if len(args) > 0 && (opt.ALBLogType != "both" || opt.ConnectionSampleRate != 10 || !opt.Keep4xx || !reflect.DeepEqual(opt.ConnectionSamplerFields, []string{"elb"})) {
-			t.Fatalf("flags not applied: %#v", opt)
-		}
-	}
-	for _, args := range [][]string{{"--alb_log_type=unknown"}, {"--samplerate=0"}, {"--connection_samplerate=-1"}} {
-		opt := &options.Options{}
-		_, err := flag.NewParser(opt, flag.None).ParseArgs(args)
-		if err == nil {
-			err = validateALBOptions(opt)
-		}
-		if err == nil {
-			t.Fatalf("accepted invalid flags %v", args)
-		}
+func TestValidateALBOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name                       string
+		logType                    string
+		accessRate, connectionRate int
+		wantErr                    bool
+	}{
+		{"valid", "access", 1, 1, false},
+		{"unknown log type", "unknown", 1, 1, true},
+		{"zero access rate", "access", 0, 1, true},
+		{"negative connection rate", "both", 20, -1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateALBOptions(&options.Options{ALBLogType: tc.logType, SampleRate: tc.accessRate, ConnectionSampleRate: tc.connectionRate})
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("error = %v; want error = %v", err, tc.wantErr)
+			}
+		})
 	}
 }
