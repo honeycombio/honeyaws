@@ -37,6 +37,11 @@ func init() {
 }
 
 func cmdALB(args []string) error {
+	if len(args) > 0 && args[0] == "ingest" {
+		if err := validateALBOptions(opt); err != nil {
+			return err
+		}
+	}
 	// TODO: Would be nice to have this more highly configurable.
 	//
 	// Will just use environment config right now, e.g., default profile.
@@ -124,42 +129,21 @@ Your write key is available at https://ui.honeycomb.io/account`)
 					os.Exit(1)
 				}
 
-				enabled := false
-				bucketName := ""
-				bucketPrefix := ""
-
-				for _, element := range lbArnResp.Attributes {
-					if *element.Key == "access_logs.s3.enabled" && *element.Value == "true" {
-						enabled = true
-					}
-					if *element.Key == "access_logs.s3.bucket" {
-						bucketName = *element.Value
-					}
-					if *element.Key == "access_logs.s3.prefix" {
-						bucketPrefix = *element.Value
-					}
+				sources, err := albLogSources(lbArnResp.Attributes, opt.ALBLogType)
+				if err != nil {
+					return fmt.Errorf("ALB %q: %w", lbName, err)
 				}
-
-				if !enabled {
-					fmt.Fprintf(os.Stderr, `Access logs are not configured for ALB %q. Please enable them to use the ingest tool.
-
-For reference see this link:
-
-http://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#enable-access-logging
-`, lbName)
-					os.Exit(1)
+				for _, source := range sources {
+					logrus.WithFields(logrus.Fields{
+						"bucket":   source.bucket,
+						"lbName":   lbName,
+						"log_type": source.logType,
+					}).Info("Ingesting ALB logs")
+					albDownloader := logbucket.NewALBDownloader(sess, source.bucket, source.prefix, lbName)
+					albDownloader.ConnectionLogs = source.logType == "connection"
+					downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
+					go downloader.Download(downloadsCh)
 				}
-				logrus.WithFields(logrus.Fields{
-					"bucket": bucketName,
-					"lbName": lbName,
-				}).Info("Access logs are enabled for ALB ♥")
-
-				albDownloader := logbucket.NewALBDownloader(sess, bucketName, bucketPrefix, lbName)
-				downloader := logbucket.NewDownloader(sess, stater, albDownloader, opt.BackfillHr)
-
-				// TODO: One-goroutine-per-LB feels a bit
-				// silly.
-				go downloader.Download(downloadsCh)
 			}
 
 			signalCh := make(chan os.Signal)

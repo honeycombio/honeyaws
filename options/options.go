@@ -12,7 +12,11 @@ type Options struct {
 	SamplerInterval int     `long:"sampler_interval" default:"300" description:"Interval between sample rate calculation, in seconds."`
 	SamplerDecay    float64 `long:"sampler_decay" default:"0.5" description:"Used only when sampler_type is set to 'ema'. A value between (0,1) that controls how fast new observations are factored into the moving average. Larger values mean the sample rates are more sensitive to recent observations."`
 
-	SamplerFields []string `long:"sampler_fields" description:"honeyalb only: parsed log field to include in the sampling key; repeat for multiple fields. Defaults to backend_status_code, elb_status_code, and elb."`
+	SamplerFields           []string `long:"sampler_fields" description:"honeyalb only: parsed log field to include in the sampling key; repeat for multiple fields. Defaults to backend_status_code, elb_status_code, and elb."`
+	ALBLogType              string   `long:"alb_log_type" choice:"access" choice:"connection" choice:"both" default:"access" description:"honeyalb only: log types to ingest"`
+	ConnectionSampleRate    int      `long:"connection_samplerate" default:"1" description:"honeyalb only: target sample rate for successful connection logs"`
+	ConnectionSamplerFields []string `long:"connection_sampler_fields" description:"honeyalb only: connection sampling key field; repeat for multiple fields. Defaults to tls_verify_status, tls_protocol, and elb."`
+	Keep4xx                 bool     `long:"keep_4xx" description:"honeyalb only: retain all access logs with ALB or target 4xx status codes"`
 
 	Version bool   `short:"V" long:"version" description:"Show version"`
 	APIHost string `hidden:"true" long:"api_host" description:"Host for the Honeycomb API" default:"https://api.honeycomb.io/"`

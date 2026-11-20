@@ -26,7 +26,11 @@ func TestObjectPrefixes(t *testing.T) {
 				Prefix:     "noslash",
 				LBName:     "service1",
 			},
-		}, "noslash/AWSLogs/12345/elasticloadbalancing/us-east-1/2018/08/20/12345_elasticloadbalancing_us-east-1_app.service1"},
+		}, "noslash/AWSLogs/12345/elasticloadbalancing/us-east-1/2018/08/20/12345_elasticloadbalancing_us-east-1_app.service1."},
+		{&ALBDownloader{
+			ELBDownloader:  &ELBDownloader{AccountID: "12345", Region: "us-east-1", Prefix: "connections/", LBName: "service1"},
+			ConnectionLogs: true,
+		}, "connections/AWSLogs/12345/elasticloadbalancing/us-east-1/2018/08/20/conn_log_12345_elasticloadbalancing_us-east-1_app.service1."},
 		{&CloudFrontDownloader{
 			BucketName:     "mylogs",
 			Prefix:         "trailingslash/",

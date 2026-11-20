@@ -241,7 +241,6 @@ func sendEventsToHoneycomb(in <-chan event.Event, edgeMode bool) {
 				"error": err,
 			}).Error("Unexpected error adding data to libhoney event")
 		}
-		// sampling is handled by the nginx parser
 		if err := libhEv.SendPresampled(); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"event": ev,

@@ -15,6 +15,7 @@ import (
 
 func TestALBParseEvents(t *testing.T) {
 	elbPubisher := NewALBEventParser(&options.Options{SampleRate: 1, SamplerType: "simple"})
+	defer elbPubisher.sampler.Stop()
 	outCh := make(chan event.Event)
 	tmpFile, err := ioutil.TempFile("", "")
 	if err != nil {
@@ -40,6 +41,7 @@ func TestALBParseEvents(t *testing.T) {
 		t.Fatal("Shouldn't have err but did: ", err)
 	}
 	expected := map[string]interface{}{
+		"log_type":                 "access",
 		"type":                     "h2",
 		"client_authority":         "10.11.12.13:47882",
 		"backend_authority":        "10.3.47.87:8080",
