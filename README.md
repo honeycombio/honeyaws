@@ -9,7 +9,7 @@ for debugging your software in production.
 
 - `honeyelb` - A tool for ingesting Elastic Load Balancer access logs.
   ([docs](https://honeycomb.io/docs/connect/aws-elastic-load-balancer))
-- `honeyalb` - A tool for ingesting Application Load Balancer access logs.
+- `honeyalb` - A tool for ingesting Application Load Balancer access and connection logs.
 - `honeycloudfront` - A tool for ingesting CloudFront access logs.
   ([docs](https://honeycomb.io/docs/connect/aws-cloudfront/))
 - `honeycloudtrail` - A tool for ingesting CloudTrail logs.
@@ -60,6 +60,58 @@ $ honeyelb --writekey=<writekey> ingest foo-lb
 ```
 
 To ingest all LBs, use `honeyelb ingest` without any non-flag arguments.
+
+### ALB connection logs
+
+`honeyalb` ingests access logs by default. Use `--alb_log_type=connection` to
+ingest only connection logs, or `--alb_log_type=both` to ingest both types:
+
+```sh
+honeyalb --alb_log_type=both --writekey=<writekey> ingest <alb-name>
+```
+
+Enable each selected log type on the ALB. Access and connection locations are
+discovered independently; connection-only ingestion does not require access
+logging. See the AWS documentation for
+[access logs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html)
+and [connection logs](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-connection-logs.html).
+
+To look up the log locations, honeyalb needs
+`elasticloadbalancing:DescribeLoadBalancers` and
+`elasticloadbalancing:DescribeLoadBalancerAttributes`. Give the AWS identity
+running honeyalb the following permissions for each log location:
+
+| IAM action | Resource |
+| --- | --- |
+| `s3:ListBucket` | The bucket ARN, such as `arn:aws:s3:::BUCKET`. |
+| `s3:GetObject` | The selected log object ARNs, such as `arn:aws:s3:::BUCKET/PREFIX/AWSLogs/ACCOUNT_ID/elasticloadbalancing/REGION/*`. |
+
+If `s3:ListBucket` is restricted using a `StringLike` condition on `s3:prefix`,
+allow the date-based prefixes honeyalb lists under that log location. Within
+each `YYYY/MM/DD/` directory, honeyalb selects filenames using these prefixes:
+
+| Log type | Filename prefix |
+| --- | --- |
+| Access | `ACCOUNT_ID_elasticloadbalancing_REGION_app.LB_NAME.` |
+| Connection | `conn_log_ACCOUNT_ID_elasticloadbalancing_REGION_app.LB_NAME.` |
+
+The IAM actions are the same for both log types. Listing conditions and object
+permissions must cover the selected filename prefixes; ingesting `both` requires
+both. Omit `PREFIX/` from the example ARN when no log prefix is configured. See the
+[S3 prefix policy examples](https://docs.aws.amazon.com/AmazonS3/latest/userguide/amazon-s3-policy-keys.html).
+
+These are honeyalb's read permissions. The ALB log-delivery bucket policy is
+configured separately when enabling logging.
+
+Both types use `--dataset` (default `aws-elb-access`). Filter by `log_type=access`
+for requests or `log_type=connection` for connection attempts. Connection fields
+use AWS names; `tls_handshake_latency` is in seconds and unavailable `-` values
+are omitted. Older connection records obtain `elb` from the S3 filename.
+
+Filter by `conn_trace_id` and `elb` to group retained events from a connection,
+including requests whose connection event was sampled out. Application trace IDs
+are preserved separately. Older records without `conn_trace_id` are accepted;
+new trailing fields are ignored. See [Sampling](#sampling) for retention controls.
 
 ## High Availability
 
@@ -112,21 +164,25 @@ $ honeyelb --samplerate 20 ...  ingest ...
 ### Sampler Type
 
 You can choose between two implementations of dynamic sampling: `simple` or `ema`.
+Use `--sampler_type` to select one; the default is `simple`.
 Complete details about these implementations can be found [here](https://github.com/honeycombio/dynsampler-go).
 
-- `simple` looks at a single interval of traffic, defined by the `sampler_interval` arg, and computes sample rates
-based on counts of traffic categories seen in that interval. At every interval, the results of the previous interval
-are discarded.
-- `ema` averages observations from each interval into a moving average of counts, and computes sample rates based
-on those counts. Older observations are phased out at a rate specified by `sampler_decay`. Larger decay values mean that
-sample rates are more heavily influenced by newer traffic
+- `simple` looks at a single interval of traffic, defined by `--sampler_interval`
+  (default `300` seconds), and computes sample rates based on counts of traffic
+  categories seen in that interval. At every interval, the results of the previous
+  interval are discarded.
+- `ema` averages observations from each interval into a moving average of counts,
+  and computes sample rates based on those counts. Older observations are phased
+  out at a rate specified by `--sampler_decay` (default `0.5`, used only by `ema`).
+  Larger decay values mean that sample rates are more heavily influenced by
+  newer traffic.
 
 `simple` is suitable for most types of traffic, but we recommend using `ema` if your traffic comes in in bursts.
 
 ### ALB sampling fields
 
-`honeyalb` groups events by backend status code, load balancer status code, and
-load balancer name by default. To replace that key, repeat `--sampler_fields` for
+`honeyalb` groups access events by backend status code, load balancer status code,
+and load balancer name by default. To replace that key, repeat `--sampler_fields` for
 each parsed ALB log field to include:
 
 ```sh
@@ -135,7 +191,7 @@ honeyalb --sampler_type=ema --samplerate=20 \
   --sampler_fields=elb_status_code --writekey=<writekey> ingest <alb-name>
 ```
 
-Omitting `--sampler_fields` preserves the existing key and sampling behavior.
+Omitting `--sampler_fields` preserves the existing access sampling key.
 Explicit fields replace the entire key; include `elb` to keep load balancers in
 separate groups. This option applies only to `honeyalb`, with either sampler type.
 
@@ -150,6 +206,43 @@ nearly every event a rare group and reduce the effectiveness of dynamic sampling
 The `--samplerate` target applies across the configured groups, not independently
 to each key. The sample rate attached to retained events continues to reflect
 the sampler's actual per-key rate.
+
+### ALB connection sampling
+
+To sample connection logs with `honeyalb`, use `--connection_samplerate`. The
+access and connection sample rates are independent. If you omit this flag, it
+defaults to `1` and all parsed connection events are sent, even when
+`--samplerate` is set to a higher value for access logs.
+
+For instance, setting `--connection_samplerate=10` targets roughly one out of
+every ten successful connections. The connection sampler uses the
+[sampler type, interval, and decay described above](#sampler-type), with its own
+sampling history:
+
+```sh
+honeyalb --alb_log_type=both --sampler_type=ema \
+  --samplerate=20 --connection_samplerate=10 \
+  --writekey=<writekey> ingest <alb-name>
+```
+
+Connection logs are grouped by `tls_verify_status`, `tls_protocol`, and `elb` by
+default. To replace that key, repeat `--connection_sampler_fields` for each
+connection field to include. The access-log `--sampler_fields` setting does not
+affect connection logs. Keep in mind that sampling access logs gives you a
+partial count of requests per connection.
+
+### ALB error retention
+
+With `honeyalb`, the following errors are always sent at sample rate `1`:
+
+- Connections with `tls_verify_status` starting with `Failed:`.
+- Requests with ALB or target 5xx status, a populated `error_reason`, or negative
+  request, backend, or response processing time.
+- Requests with ALB or target 4xx status when `--keep_4xx` is set.
+
+Keeping errors can mean sending more events than the sampling target. This
+applies to records honeyalb successfully reads and parses; delivery from AWS or
+through the downloader is not guaranteed.
 
 ## Contributions
 

@@ -64,6 +64,7 @@ type ELBDownloader struct {
 
 type ALBDownloader struct {
 	*ELBDownloader
+	ConnectionLogs bool
 }
 
 type CloudFrontDownloader struct {
@@ -147,13 +148,17 @@ func (d *ELBDownloader) Bucket() string {
 }
 
 func NewALBDownloader(sess *session.Session, bucketName, bucketPrefix, lbName string) *ALBDownloader {
-	return &ALBDownloader{NewELBDownloader(sess, bucketName, bucketPrefix, lbName)}
+	return &ALBDownloader{ELBDownloader: NewELBDownloader(sess, bucketName, bucketPrefix, lbName)}
 }
 
 func (d *ALBDownloader) ObjectPrefix(day time.Time) string {
 	dayPath := day.Format("/2006/01/02")
+	filePrefix := ""
+	if d.ConnectionLogs {
+		filePrefix = "conn_log_"
+	}
 	return filepath.Join(d.Prefix, "AWSLogs/", d.AccountID, AWSElasticLoadBalancing, d.Region+dayPath,
-		d.AccountID+"_"+AWSElasticLoadBalancing+"_"+d.Region+"_app."+d.LBName)
+		filePrefix+d.AccountID+"_"+AWSElasticLoadBalancing+"_"+d.Region+"_app."+d.LBName+".")
 }
 
 func (d *Downloader) downloadObject(obj *s3.Object) error {
@@ -162,7 +167,7 @@ func (d *Downloader) downloadObject(obj *s3.Object) error {
 		"size":          *obj.Size,
 		"from_time_ago": time.Since(*obj.LastModified),
 		"entity":        d.String(),
-	}).Info("Downloading access logs from object")
+	}).Info("Downloading logs from object")
 
 	f, err := ioutil.TempFile("", "hc-entity-ingest")
 	if err != nil {
