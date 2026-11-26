@@ -45,6 +45,8 @@ type CloudTrailRecord struct {
 	Resources         []CloudTrailResource   `json:"resources"`
 	EventType         string                 `json:"eventType"`
 	RequestParameters map[string]interface{} `json:"requestParameters"`
+	ErrorCode         string                 `json:"errorCode"`
+	ErrorMessage      string                 `json:"errorMessage"`
 }
 
 type CloudTrailEventParser struct {
@@ -69,6 +71,15 @@ func flattenCloudTrailRecord(r *CloudTrailRecord) map[string]interface{} {
 	p["UserAgent"] = r.UserAgent
 	p["EventType"] = r.EventType
 	p["Parameters"] = r.RequestParameters
+
+	// CloudTrail only includes these on calls that failed, so leave them off
+	// successful events instead of sending empty columns.
+	if r.ErrorCode != "" {
+		p["ErrorCode"] = r.ErrorCode
+	}
+	if r.ErrorMessage != "" {
+		p["ErrorMessage"] = r.ErrorMessage
+	}
 
 	return p
 }
